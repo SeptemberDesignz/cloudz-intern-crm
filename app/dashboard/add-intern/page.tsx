@@ -20,6 +20,7 @@ export default function AddIntern() {
     notes: ''
   })
 
+  // Create Supabase client
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -32,48 +33,71 @@ export default function AddIntern() {
     })
   }
 
-  async function sendWelcomeEmail(email: string, name: string) {
-    try {
-      const response = await fetch('/api/send-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          to: email, 
-          name: name, 
-          password: 'Welcome2024!',
-          type: 'welcome'
-        })
-      })
-      if (response.ok) {
-        console.log('Welcome email sent successfully')
-        toast.success('Welcome email sent!')
-      }
-    } catch (error) {
-      console.error('Failed to send email:', error)
-    }
-  }
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
-
-    const { data, error } = await supabase
-      .from('interns')
-      .insert([formData])
-      .select()
-
-    if (error) {
-      toast.error(error.message)
-    } else {
-      toast.success('Intern added successfully!')
-      
-      // Send welcome email
-      await sendWelcomeEmail(formData.email, formData.full_name)
-      
-      setTimeout(() => {
-        router.push('/dashboard/interns')
-      }, 1500)
+    
+    // Validate required fields
+    if (!formData.full_name.trim()) {
+      toast.error('Please enter full name')
+      setLoading(false)
+      return
     }
+    
+    if (!formData.email.trim()) {
+      toast.error('Please enter email')
+      setLoading(false)
+      return
+    }
+    
+    try {
+      console.log('Submitting:', formData)
+      
+      const { data, error } = await supabase
+        .from('interns')
+        .insert([
+          {
+            full_name: formData.full_name,
+            email: formData.email,
+            phone: formData.phone || null,
+            university: formData.university || null,
+            course: formData.course || null,
+            stage: formData.stage,
+            mentor: formData.mentor || null,
+            notes: formData.notes || null
+          }
+        ])
+        .select()
+
+      if (error) {
+        console.error('Supabase error details:', error)
+        toast.error(`Error: ${error.message}`)
+      } else {
+        console.log('Successfully added:', data)
+        toast.success('Intern added successfully! 🎉')
+        
+        // Clear form
+        setFormData({
+          full_name: '',
+          email: '',
+          phone: '',
+          university: '',
+          course: '',
+          stage: 'applied',
+          mentor: '',
+          notes: ''
+        })
+        
+        // Redirect after 1.5 seconds
+        setTimeout(() => {
+          router.push('/dashboard/interns')
+        }, 1500)
+      }
+    } catch (err: any) {
+      console.error('Unexpected error:', err)
+      toast.error(`Unexpected error: ${err.message}`)
+    }
+    
     setLoading(false)
   }
 
@@ -96,6 +120,7 @@ export default function AddIntern() {
       <div className="bg-white rounded-2xl shadow-sm p-8 max-w-2xl">
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Full Name */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Full Name *
@@ -114,6 +139,7 @@ export default function AddIntern() {
               </div>
             </div>
 
+            {/* Email */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Email *
@@ -132,6 +158,7 @@ export default function AddIntern() {
               </div>
             </div>
 
+            {/* Phone */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Phone
@@ -149,6 +176,7 @@ export default function AddIntern() {
               </div>
             </div>
 
+            {/* University */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 University
@@ -166,6 +194,7 @@ export default function AddIntern() {
               </div>
             </div>
 
+            {/* Course */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Course
@@ -183,6 +212,7 @@ export default function AddIntern() {
               </div>
             </div>
 
+            {/* Status */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Status
@@ -203,6 +233,7 @@ export default function AddIntern() {
             </div>
           </div>
 
+          {/* Mentor */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Mentor
@@ -217,6 +248,7 @@ export default function AddIntern() {
             />
           </div>
 
+          {/* Notes */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Notes
@@ -231,6 +263,7 @@ export default function AddIntern() {
             />
           </div>
 
+          {/* Buttons */}
           <div className="flex gap-3 pt-4">
             <button
               type="submit"

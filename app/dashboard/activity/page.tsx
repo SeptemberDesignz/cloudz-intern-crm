@@ -2,18 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
-import { User, Calendar, Eye, Activity, Clock } from 'lucide-react'
-
-interface Activity {
-  id: string
-  user_email: string
-  action: string
-  details: any
-  created_at: string
-}
+import { Activity, User, Calendar, Filter, Download } from 'lucide-react'
+import * as XLSX from 'xlsx'
 
 export default function ActivityPage() {
-  const [activities, setActivities] = useState<Activity[]>([])
+  const [activities, setActivities] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
 
@@ -27,16 +20,26 @@ export default function ActivityPage() {
   }, [])
 
   async function fetchActivities() {
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('activity_log')
       .select('*')
       .order('created_at', { ascending: false })
-      .limit(100)
-
-    if (!error && data) {
-      setActivities(data)
-    }
+      .limit(50)
+    setActivities(data || [])
     setLoading(false)
+  }
+
+  async function exportActivities() {
+    const exportData = activities.map(activity => ({
+      'Action': activity.action,
+      'User': activity.user_email,
+      'Details': JSON.stringify(activity.details),
+      'Date': new Date(activity.created_at).toLocaleString()
+    }))
+    const ws = XLSX.utils.json_to_sheet(exportData)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Activity Log')
+    XLSX.writeFile(wb, `activity-log-${new Date().toISOString().split('T')[0]}.xlsx`)
   }
 
   const getActionIcon = (action: string) => {
@@ -47,46 +50,36 @@ export default function ActivityPage() {
     return '📝'
   }
 
-  const getActionColor = (action: string) => {
-    if (action.includes('add')) return 'text-green-600 bg-green-50'
-    if (action.includes('edit')) return 'text-blue-600 bg-blue-50'
-    if (action.includes('delete')) return 'text-red-600 bg-red-50'
-    if (action.includes('login')) return 'text-purple-600 bg-purple-50'
-    return 'text-gray-600 bg-gray-50'
-  }
-
   const filteredActivities = activities.filter(activity => {
     if (filter === 'all') return true
-    if (filter === 'interns') return activity.action.includes('intern')
-    if (filter === 'tasks') return activity.action.includes('task')
-    if (filter === 'users') return activity.action.includes('user')
-    return true
+    return activity.action.includes(filter)
   })
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    )
-  }
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
-          Activity Log
-        </h1>
-        <p className="text-gray-500 mt-1">Track all actions and changes in the system</p>
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
+            Activity Log
+          </h1>
+          <p className="text-gray-500 mt-1">Track all actions and changes in the system</p>
+        </div>
+        <button
+          onClick={exportActivities}
+          className="bg-green-500 text-white px-4 py-2 rounded-lg flex items-center gap-2"
+        >
+          <Download className="w-4 h-4" />
+          Export Log
+        </button>
       </div>
 
       {/* Filters */}
       <div className="flex gap-3 mb-6">
         {[
-          { value: 'all', label: 'All Activities' },
-          { value: 'interns', label: 'Interns' },
-          { value: 'tasks', label: 'Tasks' },
-          { value: 'users', label: 'Users' }
+          { value: 'all', label: 'All' },
+          { value: 'intern', label: 'Interns' },
+          { value: 'task', label: 'Tasks' },
+          { value: 'login', label: 'Logins' }
         ].map(f => (
           <button
             key={f.value}
@@ -102,34 +95,27 @@ export default function ActivityPage() {
         ))}
       </div>
 
-      {/* Activities List */}
-      <div className="space-y-3">
-        {filteredActivities.length === 0 ? (
-          <div className="bg-white rounded-2xl shadow-sm p-12 text-center">
-            <Activity className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500">No activities found</p>
-          </div>
-        ) : (
-          filteredActivities.map((activity) => (
+      {loading ? (
+        <div className="text-center py-8">Loading...</div>
+      ) : filteredActivities.length === 0 ? (
+        <div className="bg-white rounded-2xl shadow-sm p-12 text-center text-gray-500">
+          <Activity className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+          <p>No activities found</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {filteredActivities.map((activity) => (
             <div key={activity.id} className="bg-white rounded-xl shadow-sm p-4 hover:shadow-md transition-shadow">
               <div className="flex items-start gap-4">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg ${getActionColor(activity.action)}`}>
-                  {getActionIcon(activity.action)}
-                </div>
+                <div className="text-2xl">{getActionIcon(activity.action)}</div>
                 <div className="flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold text-gray-800">{activity.action}</span>
-                    {activity.details && (
-                      <span className="text-sm text-gray-600">
-                        {Object.entries(activity.details).map(([key, value]) => (
-                          <span key={key} className="inline-block bg-gray-100 px-2 py-0.5 rounded mr-1 text-xs">
-                            {key}: {String(value)}
-                          </span>
-                        ))}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                  <p className="font-semibold text-gray-800">{activity.action}</p>
+                  {activity.details && (
+                    <p className="text-sm text-gray-500 mt-1">
+                      {Object.entries(activity.details).map(([key, value]) => `${key}: ${value}`).join(', ')}
+                    </p>
+                  )}
+                  <div className="flex items-center gap-4 mt-2 text-xs text-gray-400">
                     <span className="flex items-center gap-1">
                       <User className="w-3 h-3" />
                       {activity.user_email || 'System'}
@@ -142,20 +128,9 @@ export default function ActivityPage() {
                 </div>
               </div>
             </div>
-          ))
-        )}
-      </div>
-
-      {/* Stats Summary */}
-      <div className="mt-6 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-4">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <Eye className="w-5 h-5 text-gray-500" />
-            <span className="text-sm text-gray-600">Total Activities Logged</span>
-          </div>
-          <span className="font-bold text-gray-800">{activities.length}</span>
+          ))}
         </div>
-      </div>
+      )}
     </div>
   )
 }
