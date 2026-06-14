@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
 import toast from 'react-hot-toast'
-import { User, Mail, Phone, GraduationCap, Briefcase, FileText, ArrowLeft, Calendar } from 'lucide-react'
+import { User, Mail, Phone, GraduationCap, Briefcase, ArrowLeft, UserPlus } from 'lucide-react'
 
 export default function AddIntern() {
   const router = useRouter()
@@ -32,17 +32,47 @@ export default function AddIntern() {
     })
   }
 
+  async function sendWelcomeEmail(email: string, name: string) {
+    try {
+      const response = await fetch('/api/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          to: email, 
+          name: name, 
+          password: 'Welcome2024!',
+          type: 'welcome'
+        })
+      })
+      if (response.ok) {
+        console.log('Welcome email sent successfully')
+        toast.success('Welcome email sent!')
+      }
+    } catch (error) {
+      console.error('Failed to send email:', error)
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
 
-    const { error } = await supabase.from('interns').insert([formData])
+    const { data, error } = await supabase
+      .from('interns')
+      .insert([formData])
+      .select()
 
     if (error) {
       toast.error(error.message)
     } else {
       toast.success('Intern added successfully!')
-      router.push('/dashboard/interns')
+      
+      // Send welcome email
+      await sendWelcomeEmail(formData.email, formData.full_name)
+      
+      setTimeout(() => {
+        router.push('/dashboard/interns')
+      }, 1500)
     }
     setLoading(false)
   }
@@ -205,8 +235,9 @@ export default function AddIntern() {
             <button
               type="submit"
               disabled={loading}
-              className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-8 py-2 rounded-lg hover:opacity-90 transition-all transform hover:scale-[1.02] font-semibold shadow-lg disabled:opacity-50"
+              className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-8 py-2 rounded-lg hover:opacity-90 transition-all transform hover:scale-[1.02] font-semibold shadow-lg disabled:opacity-50 flex items-center gap-2"
             >
+              <UserPlus className="w-4 h-4" />
               {loading ? 'Adding...' : 'Add Intern'}
             </button>
             <button
