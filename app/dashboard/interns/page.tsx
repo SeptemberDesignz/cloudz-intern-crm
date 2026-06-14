@@ -59,7 +59,7 @@ export default function InternsList() {
     }
   }
 
-  // Export to Excel function - added directly here
+  // Export to Excel function
   const exportToExcel = () => {
     const exportData = interns.map(intern => ({
       'Full Name': intern.full_name,
@@ -138,12 +138,11 @@ export default function InternsList() {
             <Download className="w-4 h-4" />
             Export to Excel
           </button>
-          <a 
-            href="/dashboard/add-intern"
-            className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-2 rounded-xl hover:opacity-90 transition-all transform hover:scale-[1.02] text-center font-semibold shadow-lg"
-          >
-            + Add New Intern
-          </a>
+          <Link href="/dashboard/add-intern">
+            <button className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-2 rounded-xl hover:opacity-90 transition-all transform hover:scale-[1.02] text-center font-semibold shadow-lg">
+              + Add New Intern
+            </button>
+          </Link>
         </div>
       </div>
 
@@ -163,20 +162,24 @@ export default function InternsList() {
               <div key={intern.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-xl transition-all duration-300 card-hover overflow-hidden">
                 <div className="p-6">
                   <div className="flex justify-between items-start mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center text-white font-bold text-lg">
-                        {intern.full_name.charAt(0)}
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-gray-800">{intern.full_name}</h3>
-                        <div className="flex items-center gap-1 mt-1">
-                          <div className={`w-2 h-2 rounded-full ${stageStyle.dot}`}></div>
-                          <span className={`text-xs font-medium ${stageStyle.text}`}>
-                            {intern.stage.charAt(0).toUpperCase() + intern.stage.slice(1)}
-                          </span>
+                    <Link href={`/dashboard/interns/${intern.id}`}>
+                      <div className="flex items-center gap-3 cursor-pointer">
+                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center text-white font-bold text-lg">
+                          {intern.full_name.charAt(0)}
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-gray-800 hover:text-purple-600 transition-colors">
+                            {intern.full_name}
+                          </h3>
+                          <div className="flex items-center gap-1 mt-1">
+                            <div className={`w-2 h-2 rounded-full ${stageStyle.dot}`}></div>
+                            <span className={`text-xs font-medium ${stageStyle.text}`}>
+                              {intern.stage.charAt(0).toUpperCase() + intern.stage.slice(1)}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    </Link>
                     <div className="flex gap-2">
                       <Link href={`/dashboard/edit-intern/${intern.id}`}>
                         <button className="p-2 hover:bg-blue-50 rounded-lg transition-colors group">
@@ -207,6 +210,11 @@ export default function InternsList() {
                       <div className="flex items-center gap-2 text-sm text-gray-600">
                         <GraduationCap className="w-4 h-4" />
                         <span className="truncate">{intern.university}</span>
+                      </div>
+                    )}
+                    {intern.course && (
+                      <div className="flex items-center gap-2 text-sm text-gray-500 ml-6">
+                        <span>{intern.course}</span>
                       </div>
                     )}
                   </div>
