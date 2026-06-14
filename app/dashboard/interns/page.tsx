@@ -3,7 +3,9 @@
 import { useEffect, useState } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 import toast from 'react-hot-toast'
-import { Search, Trash2, Mail, Phone, GraduationCap, User, MapPin } from 'lucide-react'
+import Link from 'next/link'
+import { Search, Trash2, Edit, Mail, Phone, GraduationCap, User, Download } from 'lucide-react'
+import * as XLSX from 'xlsx'
 
 interface Intern {
   id: string
@@ -14,6 +16,7 @@ interface Intern {
   stage: string
   phone: string
   mentor?: string
+  created_at: string
 }
 
 export default function InternsList() {
@@ -56,6 +59,28 @@ export default function InternsList() {
     }
   }
 
+  // Export to Excel function - added directly here
+  const exportToExcel = () => {
+    const exportData = interns.map(intern => ({
+      'Full Name': intern.full_name,
+      'Email': intern.email,
+      'Phone': intern.phone || '-',
+      'University': intern.university || '-',
+      'Course': intern.course || '-',
+      'Stage': intern.stage,
+      'Mentor': intern.mentor || '-',
+      'Joined Date': new Date(intern.created_at).toLocaleDateString()
+    }))
+
+    const worksheet = XLSX.utils.json_to_sheet(exportData)
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Interns')
+    
+    const fileName = `cloudz-interns-${new Date().toISOString().split('T')[0]}.xlsx`
+    XLSX.writeFile(workbook, fileName)
+    toast.success('Export complete!')
+  }
+
   function getStageColor(stage: string) {
     const colors: { [key: string]: { bg: string; text: string; dot: string } } = {
       applied: { bg: 'bg-yellow-50', text: 'text-yellow-700', dot: 'bg-yellow-500' },
@@ -87,7 +112,6 @@ export default function InternsList() {
 
   return (
     <div>
-      {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
           All Interns
@@ -95,7 +119,6 @@ export default function InternsList() {
         <p className="text-gray-500 mt-1">Manage and track your intern cohort</p>
       </div>
 
-      {/* Search and Add Bar */}
       <div className="flex flex-col sm:flex-row gap-4 mb-6">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -107,12 +130,21 @@ export default function InternsList() {
             className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
           />
         </div>
-        <a 
-          href="/dashboard/add-intern"
-          className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-2 rounded-xl hover:opacity-90 transition-all transform hover:scale-[1.02] text-center font-semibold shadow-lg"
-        >
-          + Add New Intern
-        </a>
+        <div className="flex gap-3">
+          <button
+            onClick={exportToExcel}
+            className="bg-green-500 text-white px-4 py-2 rounded-xl hover:bg-green-600 transition-all flex items-center gap-2"
+          >
+            <Download className="w-4 h-4" />
+            Export to Excel
+          </button>
+          <a 
+            href="/dashboard/add-intern"
+            className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-2 rounded-xl hover:opacity-90 transition-all transform hover:scale-[1.02] text-center font-semibold shadow-lg"
+          >
+            + Add New Intern
+          </a>
+        </div>
       </div>
 
       {filteredInterns.length === 0 ? (
@@ -145,12 +177,19 @@ export default function InternsList() {
                         </div>
                       </div>
                     </div>
-                    <button
-                      onClick={() => deleteIntern(intern.id)}
-                      className="p-2 hover:bg-red-50 rounded-lg transition-colors group"
-                    >
-                      <Trash2 className="w-4 h-4 text-gray-400 group-hover:text-red-500" />
-                    </button>
+                    <div className="flex gap-2">
+                      <Link href={`/dashboard/edit-intern/${intern.id}`}>
+                        <button className="p-2 hover:bg-blue-50 rounded-lg transition-colors group">
+                          <Edit className="w-4 h-4 text-gray-400 group-hover:text-blue-500" />
+                        </button>
+                      </Link>
+                      <button
+                        onClick={() => deleteIntern(intern.id)}
+                        className="p-2 hover:bg-red-50 rounded-lg transition-colors group"
+                      >
+                        <Trash2 className="w-4 h-4 text-gray-400 group-hover:text-red-500" />
+                      </button>
+                    </div>
                   </div>
                   
                   <div className="space-y-2">
@@ -168,11 +207,6 @@ export default function InternsList() {
                       <div className="flex items-center gap-2 text-sm text-gray-600">
                         <GraduationCap className="w-4 h-4" />
                         <span className="truncate">{intern.university}</span>
-                      </div>
-                    )}
-                    {intern.course && (
-                      <div className="flex items-center gap-2 text-sm text-gray-500 ml-6">
-                        <span>{intern.course}</span>
                       </div>
                     )}
                   </div>

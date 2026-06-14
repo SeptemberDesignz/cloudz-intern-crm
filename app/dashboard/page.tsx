@@ -79,7 +79,7 @@ export default function DashboardPage() {
         <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl p-8 text-white relative overflow-hidden">
           <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-10 rounded-full transform translate-x-32 -translate-y-32"></div>
           <div className="relative z-10">
-            <h1 className="text-3xl font-bold mb-2">Welcome back! 👋</h1>
+            <h1 className="text-3xl font-bold mb-2">Welcome back!</h1>
             <p className="text-blue-100">Here's what's happening with your interns today.</p>
           </div>
         </div>
