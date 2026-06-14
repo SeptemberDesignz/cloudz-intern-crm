@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
-import toast from 'react-hot-toast'
+import Image from 'next/image'
+import { Mail, Lock, ArrowRight, UserPlus, LogIn } from 'lucide-react'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -12,7 +13,6 @@ export default function LoginPage() {
   const [isSignUp, setIsSignUp] = useState(false)
   const router = useRouter()
 
-  // Create Supabase client directly here
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -27,23 +27,20 @@ export default function LoginPage() {
         email, 
         password,
         options: {
-          data: {
-            full_name: email.split('@')[0]
-          }
+          data: { full_name: email.split('@')[0] }
         }
       })
       if (error) {
-        toast.error(error.message)
+        alert(`Signup failed: ${error.message}`)
       } else {
-        toast.success('Account created! Please sign in.')
+        alert('Account created! Please sign in.')
         setIsSignUp(false)
       }
     } else {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) {
-        toast.error(error.message)
+        alert(`Login failed: ${error.message}`)
       } else {
-        toast.success('Welcome to Cloudz Travels!')
         router.push('/dashboard')
       }
     }
@@ -51,64 +48,91 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8">
-      <img src="/logo.png" alt="Cloudz Travels" className="w-24 h-24 object-contain" />
-        
-        <h1 className="text-2xl font-bold text-center text-gray-800 mb-2">
-          {isSignUp ? 'Create Account' : 'Welcome Back'}
-        </h1>
-        <p className="text-center text-gray-600 mb-8">
-          {isSignUp 
-            ? 'Sign up to manage Cloudz interns' 
-            : 'Sign in to Cloudz Travels Intern CRM'}
-        </p>
-        
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Email Address
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="admin@cloudztravels.com"
-              required
-            />
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative overflow-hidden">
+      {/* Animated background */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-pulse"></div>
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-blue-500 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-pulse"></div>
+      </div>
+
+      <div className="relative z-10 w-full max-w-md">
+        <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-8 border border-white/20">
+          {/* Your Logo */}
+          <div className="flex justify-center mb-8">
+            <div className="w-24 h-24 relative">
+              <Image
+                src="/logo.png"
+                alt="Cloudz Travels Logo"
+                width={96}
+                height={96}
+                className="object-contain rounded-xl"
+                priority
+              />
+            </div>
           </div>
           
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Password
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="••••••••"
-              required
-            />
-          </div>
+          <h1 className="text-3xl font-bold text-center text-white mb-2">
+            {isSignUp ? 'Create Account' : 'Welcome Back'}
+          </h1>
+          <p className="text-center text-gray-300 mb-8">
+            {isSignUp 
+              ? 'Start managing your interns efficiently' 
+              : 'Sign in to Cloudz Travels Intern CRM'}
+          </p>
           
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-2 rounded-lg font-semibold hover:opacity-90 transition disabled:opacity-50"
-          >
-            {loading ? 'Please wait...' : (isSignUp ? 'Sign Up' : 'Sign In')}
-          </button>
-          
-          <button
-            type="button"
-            onClick={() => setIsSignUp(!isSignUp)}
-            className="w-full text-sm text-blue-600 hover:text-blue-700 mt-2"
-          >
-            {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Sign Up"}
-          </button>
-        </form>
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-white placeholder-gray-400"
+                placeholder="Email address"
+                required
+              />
+            </div>
+            
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-white placeholder-gray-400"
+                placeholder="Password"
+                required
+              />
+            </div>
+            
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white py-3 rounded-lg font-semibold hover:opacity-90 transition-all duration-300 transform hover:scale-[1.02] flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                'Please wait...'
+              ) : (
+                <>
+                  {isSignUp ? 'Sign Up' : 'Sign In'}
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
+            </button>
+            
+            <button
+              type="button"
+              onClick={() => setIsSignUp(!isSignUp)}
+              className="w-full text-sm text-purple-300 hover:text-white transition-colors mt-4 flex items-center justify-center gap-2"
+            >
+              {isSignUp ? (
+                <>Already have an account? <LogIn className="w-4 h-4" /></>
+              ) : (
+                <>Don't have an account? <UserPlus className="w-4 h-4" /></>
+              )}
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   )
