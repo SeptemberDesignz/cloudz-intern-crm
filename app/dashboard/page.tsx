@@ -142,7 +142,7 @@ export default function DashboardPage() {
         })))
       } else {
         setRecentActivities([
-          { id: 1, action: 'Welcome to the internship program!', user: 'System', time: 'Just now', icon: '🎉' },
+          { id: 1, action: 'Welcome to the internship program!', user: 'System', time: 'Just now',  },
         ])
       }
     }
