@@ -61,10 +61,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .eq('id', authUser.id)
           .single()
 
-        // Check if user is an intern (has matching record in interns table)
         let role = userData?.role || 'viewer'
         
-        // If role is not set but user exists in interns table, set as intern
+        // If no role set but user exists in interns table, set as intern
         if (!userData) {
           const { data: internData } = await supabase
             .from('interns')
@@ -74,7 +73,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           
           if (internData) {
             role = 'intern'
-            // Create user record
             await supabase.from('users').insert({
               id: authUser.id,
               email: authUser.email,

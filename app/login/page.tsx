@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
 import Image from 'next/image'
-import { Mail, Lock, ArrowRight, UserPlus, LogIn } from 'lucide-react'
+import { Mail, Lock, ArrowRight, UserPlus, LogIn, Users, GraduationCap } from 'lucide-react'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -37,10 +37,20 @@ export default function LoginPage() {
         setIsSignUp(false)
       }
     } else {
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) {
         alert(`Login failed: ${error.message}`)
       } else {
+        // Get user role from database
+        const { data: userData } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', data.user?.id)
+          .single()
+        
+        const role = userData?.role || 'viewer'
+        
+        // Redirect based on role (both go to dashboard, menu will show different items)
         router.push('/dashboard')
       }
     }
@@ -51,8 +61,8 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="w-full max-w-md">
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8">
-          {/* Logo - INCREASED SIZE */}
-          <div className="flex justify-center mb-8">
+          {/* Logo */}
+          <div className="flex justify-center mb-6">
             <div className="w-40 h-40 relative">
               <Image
                 src="/logo.png"
@@ -68,11 +78,23 @@ export default function LoginPage() {
           <h1 className="text-3xl font-bold text-center text-gray-800 mb-2">
             {isSignUp ? 'Create Account' : 'Welcome Back'}
           </h1>
-          <p className="text-center text-gray-500 mb-8">
+          <p className="text-center text-gray-500 mb-6">
             {isSignUp 
-              ? 'Start managing your interns efficiently' 
-              : 'Sign in to Cloudz Travels Intern CRM'}
+              ? 'Start your internship journey' 
+              : 'Sign in to Cloudz Travels Portal'}
           </p>
+          
+          {/* Role Badges */}
+          <div className="flex justify-center gap-4 mb-6">
+            <div className="flex items-center gap-1 text-xs bg-purple-100 text-purple-700 px-3 py-1 rounded-full">
+              <Users className="w-3 h-3" />
+              Admin - Full Access
+            </div>
+            <div className="flex items-center gap-1 text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full">
+              <GraduationCap className="w-3 h-3" />
+              Intern - Limited Access
+            </div>
+          </div>
           
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
@@ -86,7 +108,7 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-800"
-                  placeholder="admin@cloudztravels.com"
+                  placeholder="admin@cloudz.com or intern@cloudz.com"
                   required
                 />
               </div>
@@ -130,6 +152,23 @@ export default function LoginPage() {
               )}
             </button>
           </form>
+          
+          {/* Demo Credentials */}
+          <div className="mt-6 pt-4 border-t border-gray-100">
+            <p className="text-xs text-center text-gray-400 mb-2">Demo Credentials</p>
+            <div className="flex justify-center gap-6 text-xs">
+              <div className="text-left">
+                <p className="font-semibold text-purple-600">Admin:</p>
+                <p className="text-gray-500">admin@cloudz.com</p>
+                <p className="text-gray-500">Admin123456</p>
+              </div>
+              <div className="text-left">
+                <p className="font-semibold text-green-600">Intern:</p>
+                <p className="text-gray-500">intern@cloudz.com</p>
+                <p className="text-gray-500">Intern123456</p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
