@@ -51,15 +51,15 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="w-full max-w-md">
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8">
-          {/* Logo */}
+          {/* Logo - INCREASED SIZE */}
           <div className="flex justify-center mb-8">
-            <div className="w-24 h-24 relative">
+            <div className="w-40 h-40 relative">
               <Image
                 src="/logo.png"
                 alt="Cloudz Travels Logo"
-                width={96}
-                height={96}
-                className="object-contain rounded-xl"
+                width={160}
+                height={160}
+                className="object-contain"
                 priority
               />
             </div>
