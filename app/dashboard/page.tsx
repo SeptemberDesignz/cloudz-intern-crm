@@ -80,13 +80,11 @@ export default function DashboardPage() {
   }
 
   async function fetchInternStats() {
-    // Get intern's task stats
     const { data: tasks } = await supabase
       .from('tasks')
       .select('*')
       .eq('intern_id', internId)
     
-    // Get intern's attendance stats
     const { data: attendance } = await supabase
       .from('attendance')
       .select('*')
@@ -126,7 +124,6 @@ export default function DashboardPage() {
   }
 
   async function fetchRecentActivities() {
-    // Get recent tasks for this intern
     if (internId) {
       const { data: recentTasks } = await supabase
         .from('tasks')
@@ -144,15 +141,13 @@ export default function DashboardPage() {
           icon: task.status === 'completed' ? '✅' : '📋'
         })))
       } else {
-        // Demo activities for testing
         setRecentActivities([
-          { id: 1, action: 'Welcome to the internship program!', user: 'Admin', time: 'Just now', icon: '🎉' },
+          { id: 1, action: 'Welcome to the internship program!', user: 'System', time: 'Just now', icon: '🎉' },
         ])
       }
     }
   }
 
-  // Admin Stats Cards (with trend)
   const adminStatCards = [
     { title: 'Total Interns', value: stats.total, icon: Users, gradient: 'from-blue-500 to-blue-600', bgGradient: 'from-blue-50 to-blue-100', trend: '+12%', color: 'text-blue-600', link: '/dashboard/interns' },
     { title: 'Active Interns', value: stats.active, icon: UserCheck, gradient: 'from-green-500 to-green-600', bgGradient: 'from-green-50 to-green-100', trend: '+8%', color: 'text-green-600', link: '/dashboard/interns' },
@@ -160,28 +155,24 @@ export default function DashboardPage() {
     { title: 'In Interview', value: stats.interview, icon: Calendar, gradient: 'from-purple-500 to-purple-600', bgGradient: 'from-purple-50 to-purple-100', trend: '+5%', color: 'text-purple-600', link: '/dashboard/interns' },
   ]
 
-  // Intern Stats Cards (NO trend property)
   const internStatCards = [
     { title: 'My Tasks', value: stats.myTasks, icon: CheckSquare, gradient: 'from-purple-500 to-purple-600', bgGradient: 'from-purple-50 to-purple-100', color: 'text-purple-600', link: '/dashboard/my-tasks' },
     { title: 'Completed', value: stats.completed, icon: Award, gradient: 'from-green-500 to-green-600', bgGradient: 'from-green-50 to-green-100', color: 'text-green-600', link: '/dashboard/my-tasks' },
     { title: 'Attendance Days', value: stats.myAttendance, icon: Clock, gradient: 'from-orange-500 to-orange-600', bgGradient: 'from-orange-50 to-orange-100', color: 'text-orange-600', link: '/dashboard/my-attendance' },
   ]
 
-  // Admin only quick actions
   const adminQuickActions = [
     { title: 'Add New Intern', icon: UserPlus, color: 'bg-green-500', link: '/dashboard/add-intern', description: 'Create new intern profile' },
     { title: 'Mark Attendance', icon: Clock, color: 'bg-orange-500', link: '/dashboard/attendance', description: 'Record daily attendance' },
     { title: 'Assign Task', icon: CheckSquare, color: 'bg-purple-500', link: '/dashboard/tasks', description: 'Create new task' },
   ]
 
-  // Intern only quick actions - NO admin features
   const internQuickActions = [
     { title: 'View My Tasks', icon: CheckSquare, color: 'bg-purple-500', link: '/dashboard/my-tasks', description: 'See assigned tasks' },
     { title: 'View Attendance', icon: Clock, color: 'bg-orange-500', link: '/dashboard/my-attendance', description: 'Check my attendance' },
     { title: 'Submit Report', icon: FileText, color: 'bg-blue-500', link: '/dashboard/intern-reports', description: 'Submit weekly report' },
   ]
 
-  // Intern only feature cards - NO Attendance Tracking or Task Management
   const internFeatureCards = [
     { title: 'My Profile', icon: UserCheck, color: 'text-blue-500', bgColor: 'bg-blue-50', description: 'View your information', link: '/dashboard/intern-profile' },
     { title: 'My Tasks', icon: CheckSquare, color: 'text-purple-500', bgColor: 'bg-purple-50', description: 'Track your tasks', link: '/dashboard/my-tasks' },
@@ -193,7 +184,6 @@ export default function DashboardPage() {
     { title: 'Training', icon: BookOpen, color: 'text-indigo-500', bgColor: 'bg-indigo-50', description: 'Learning materials', link: '/dashboard/intern-training' },
   ]
 
-  // Admin feature cards (full)
   const adminFeatureCards = [
     { title: 'Attendance Tracking', icon: Clock, color: 'text-orange-500', bgColor: 'bg-orange-50', description: 'Track daily check-ins', link: '/dashboard/attendance' },
     { title: 'Task Management', icon: CheckSquare, color: 'text-purple-500', bgColor: 'bg-purple-50', description: 'Assign and track tasks', link: '/dashboard/tasks' },
@@ -213,12 +203,12 @@ export default function DashboardPage() {
 
   return (
     <div>
-      {/* Welcome Section */}
+      {/* Welcome Section - No Hand Wave */}
       <div className="mb-8">
         <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl p-8 text-white relative overflow-hidden">
           <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-10 rounded-full transform translate-x-32 -translate-y-32"></div>
           <div className="relative z-10">
-            <h1 className="text-3xl font-bold mb-2">Welcome back, {user?.full_name || 'Intern'}! 👋</h1>
+            <h1 className="text-3xl font-bold mb-2">Welcome back!</h1>
             <p className="text-blue-100">
               {isAdmin 
                 ? "Here's what's happening with your interns today." 
@@ -257,7 +247,7 @@ export default function DashboardPage() {
         })}
       </div>
 
-      {/* Quick Actions - Role Based */}
+      {/* Quick Actions */}
       <div className="mb-8">
         <h2 className="text-lg font-semibold text-gray-800 mb-4">Quick Actions</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -339,7 +329,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Feature Cards - Role Based */}
+      {/* Feature Cards */}
       <div>
         <h2 className="text-lg font-semibold text-gray-800 mb-4">All Features</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
