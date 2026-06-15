@@ -26,37 +26,46 @@ export default function LoginPage() {
     setLoading(true)
 
     if (isSignUp) {
-      // Sign up new intern
+      // Sign up new intern with email confirmation disabled
       const { data, error } = await supabase.auth.signUp({ 
         email, 
         password,
         options: {
-          data: { full_name: email.split('@')[0] }
+          data: { full_name: email.split('@')[0] },
+          emailRedirectTo: window.location.origin + '/dashboard'
         }
       })
       
       if (error) {
         alert(`Signup failed: ${error.message}`)
-      } else {
+        setLoading(false)
+        return
+      }
+      
+      if (data.user) {
         // Create user record in users table
-        const { data: { user } } = await supabase.auth.getUser()
-        if (user) {
-          await supabase.from('users').insert({
-            id: user.id,
-            email: email,
-            full_name: email.split('@')[0],
-            role: 'intern'
-          })
-          
-          // Also create intern record
-          await supabase.from('interns').insert({
-            full_name: email.split('@')[0],
-            email: email,
-            stage: 'applied'
-          })
+        await supabase.from('users').insert({
+          id: data.user.id,
+          email: email,
+          full_name: email.split('@')[0],
+          role: 'intern'
+        })
+        
+        // Also create intern record
+        await supabase.from('interns').insert({
+          full_name: email.split('@')[0],
+          email: email,
+          stage: 'applied'
+        })
+        
+        // Auto sign in after signup
+        const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
+        if (!signInError) {
+          router.push('/dashboard')
+        } else {
+          alert('Account created! Please sign in.')
+          setIsSignUp(false)
         }
-        alert('Account created successfully! Please sign in.')
-        setIsSignUp(false)
       }
     } else {
       // Sign in existing intern
@@ -109,15 +118,15 @@ export default function LoginPage() {
     }
 
     try {
-      // Sign in with Supabase
-      const { data, error } = await supabase.auth.signInWithPassword({ 
+      // Try to sign in
+      let { error } = await supabase.auth.signInWithPassword({ 
         email: ADMIN_EMAIL, 
         password: ADMIN_PASSWORD 
       })
       
       if (error) {
-        // If admin doesn't exist in auth, create them
-        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        // If admin doesn't exist, create them
+        const { error: signUpError } = await supabase.auth.signUp({
           email: ADMIN_EMAIL,
           password: ADMIN_PASSWORD,
           options: {
@@ -131,7 +140,7 @@ export default function LoginPage() {
           return
         }
         
-        // Sign in again after creation
+        // Sign in after creation
         const { error: loginError } = await supabase.auth.signInWithPassword({
           email: ADMIN_EMAIL,
           password: ADMIN_PASSWORD
@@ -260,7 +269,7 @@ export default function LoginPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="••••••••"
+                    placeholder="•••••••• (min 6 characters)"
                     required
                   />
                   <button
@@ -297,9 +306,9 @@ export default function LoginPage() {
           {/* Admin Login Form */}
           {loginType === 'admin' && (
             <form onSubmit={handleAdminSubmit} className="space-y-5">
-              <div className="bg-blue-50 rounded-lg p-3 text-center mb-4">
-                <p className="text-sm text-blue-700">Administrator Access Only</p>
-                <p className="text-xs text-blue-600 mt-1">Authorized personnel only</p>
+              <div className="bg-gray-100 rounded-lg p-3 text-center mb-4">
+                <p className="text-sm text-gray-700">Administrator Access Only</p>
+                <p className="text-xs text-gray-500 mt-1">Authorized personnel only</p>
               </div>
               
               <div>
@@ -351,11 +360,6 @@ export default function LoginPage() {
                 {loading ? 'Please wait...' : 'Login as Administrator'}
                 <ArrowRight className="w-4 h-4" />
               </button>
-              
-              <div className="text-center text-xs text-gray-400 mt-4">
-                <p>Default Admin Credentials:</p>
-                <p>Email: admin@cloudz.com | Password: Admin123456</p>
-              </div>
             </form>
           )}
         </div>
