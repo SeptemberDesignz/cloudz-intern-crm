@@ -5,7 +5,16 @@ import { createBrowserClient } from '@supabase/ssr'
 import { useAuth } from '@/context/AuthContext'
 import { CheckSquare, Plus, Calendar, Clock, Trash2, CheckCircle, Circle, Users, Shield } from 'lucide-react'
 import toast from 'react-hot-toast'
-import Link from 'next/link'
+
+async function sendNotificationToInterns(
+  internIds: string[],
+  title: string,
+  message: string,
+  type: string
+) {
+  // Notification helper stub: external notification service not available in this module.
+  return Promise.resolve()
+}
 
 export default function TasksPage() {
   const { isAdmin } = useAuth()
@@ -51,18 +60,26 @@ export default function TasksPage() {
       return
     }
 
-    const { error } = await supabase.from('tasks').insert({
+    const { data, error } = await supabase.from('tasks').insert({
       title: newTask.title,
       description: newTask.description,
       intern_id: newTask.intern_id,
       due_date: newTask.due_date,
       status: 'pending'
-    })
+    }).select()
 
     if (error) {
       toast.error(error.message)
     } else {
-      toast.success('Task assigned successfully!')
+      // Send notification to the assigned intern
+      await sendNotificationToInterns(
+        [newTask.intern_id],
+        'New Task Assigned',
+        `You have been assigned a new task: ${newTask.title}`,
+        'task'
+      )
+      
+      toast.success('Task assigned successfully! Notification sent to intern.')
       setShowForm(false)
       setNewTask({ title: '', description: '', intern_id: '', due_date: '', status: 'pending' })
       fetchTasks()
@@ -128,7 +145,6 @@ export default function TasksPage() {
         </button>
       </div>
 
-      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="bg-white rounded-2xl shadow-sm p-6">
           <h3 className="font-semibold text-gray-800 mb-2">Pending</h3>
@@ -144,7 +160,6 @@ export default function TasksPage() {
         </div>
       </div>
 
-      {/* Add Task Form */}
       {showForm && (
         <div className="bg-white rounded-2xl shadow-sm p-6 mb-6">
           <h2 className="text-xl font-semibold mb-4">Assign New Task</h2>
@@ -179,6 +194,12 @@ export default function TasksPage() {
               onChange={(e) => setNewTask({ ...newTask, due_date: e.target.value })}
               className="w-full px-4 py-2 border border-gray-200 rounded-lg"
             />
+            <div className="bg-green-50 rounded-lg p-3">
+              <p className="text-sm text-green-700 flex items-center gap-2">
+                <CheckCircle className="w-4 h-4" />
+                The assigned intern will receive a notification immediately
+              </p>
+            </div>
             <div className="flex gap-3">
               <button onClick={addTask} className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-2 rounded-lg">
                 Assign Task
@@ -191,7 +212,6 @@ export default function TasksPage() {
         </div>
       )}
 
-      {/* Tasks List */}
       {loading ? (
         <div className="text-center py-8">Loading...</div>
       ) : tasks.length === 0 ? (

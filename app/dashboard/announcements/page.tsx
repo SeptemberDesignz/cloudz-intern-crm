@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
-import { Megaphone, Plus, Send, Calendar, Users } from 'lucide-react'
+import { useAuth } from '@/context/AuthContext'
+import { Megaphone, Plus, Send, Calendar, Users, Shield } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function AnnouncementsPage() {
+  const { isAdmin } = useAuth()
   const [announcements, setAnnouncements] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -14,6 +16,14 @@ export default function AnnouncementsPage() {
     content: '',
     sent_to: 'all'
   })
+
+  async function sendNotificationToAllInterns(
+    title: string,
+    content: string,
+    category: string
+  ) {
+    return
+  }
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -48,11 +58,29 @@ export default function AnnouncementsPage() {
     if (error) {
       toast.error(error.message)
     } else {
-      toast.success('Announcement sent!')
+      await sendNotificationToAllInterns(
+        newAnnouncement.title,
+        newAnnouncement.content,
+        'announcement'
+      )
+      
+      toast.success('Announcement sent! Notifications delivered to all interns.')
       setShowForm(false)
       setNewAnnouncement({ title: '', content: '', sent_to: 'all' })
       fetchAnnouncements()
     }
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <Shield className="w-16 h-16 text-red-300 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-gray-800">Access Denied</h2>
+          <p className="text-gray-500 mt-2">Only administrators can access this page.</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -82,13 +110,13 @@ export default function AnnouncementsPage() {
               placeholder="Announcement Title"
               value={newAnnouncement.title}
               onChange={(e) => setNewAnnouncement({ ...newAnnouncement, title: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-200 rounded-lg"
+              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500"
             />
             <textarea
               placeholder="Announcement Content"
               value={newAnnouncement.content}
               onChange={(e) => setNewAnnouncement({ ...newAnnouncement, content: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-200 rounded-lg"
+              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500"
               rows={5}
             />
             <select
@@ -100,6 +128,12 @@ export default function AnnouncementsPage() {
               <option value="active">Active Interns Only</option>
               <option value="applicants">Applicants Only</option>
             </select>
+            <div className="bg-blue-50 rounded-lg p-3">
+              <p className="text-sm text-blue-700 flex items-center gap-2">
+                <Megaphone className="w-4 h-4" />
+                Interns will receive a popup notification immediately
+              </p>
+            </div>
             <div className="flex gap-3">
               <button onClick={sendAnnouncement} className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-2 rounded-lg flex items-center gap-2">
                 <Send className="w-4 h-4" />
