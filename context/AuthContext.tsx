@@ -41,6 +41,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     getUser()
+    
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        getUser()
+      } else {
+        setUser(null)
+        setLoading(false)
+      }
+    })
+
+    return () => subscription.unsubscribe()
   }, [])
 
   async function getUser() {
@@ -48,18 +60,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { data: { user: authUser } } = await supabase.auth.getUser()
       
       if (authUser) {
+        // Check if user is admin by email
+        const isAdminEmail = authUser.email === 'admin@cloudz.com'
+        
+        // Get role from database
         const { data: userData } = await supabase
           .from('users')
-          .select('*')
+          .select('role')
           .eq('id', authUser.id)
           .single()
 
         let role: 'admin' | 'intern' | 'viewer' = 'intern'
         
-        if (userData?.role === 'admin') {
+        if (isAdminEmail || userData?.role === 'admin') {
           role = 'admin'
-        } else if (authUser.email === 'admin@cloudz.com') {
-          role = 'admin'
+          // Ensure admin record exists
           await supabase.from('users').upsert({
             id: authUser.id,
             email: authUser.email,
@@ -68,6 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           })
         } else {
           role = 'intern'
+          // Ensure intern record exists
           const { data: existing } = await supabase
             .from('users')
             .select('id')
@@ -87,7 +103,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser({
           id: authUser.id,
           email: authUser.email!,
-          full_name: userData?.full_name || authUser.user_metadata?.full_name || authUser.email!.split('@')[0],
+          full_name: authUser.user_metadata?.full_name || authUser.email!.split('@')[0],
           role: role
         })
       }
