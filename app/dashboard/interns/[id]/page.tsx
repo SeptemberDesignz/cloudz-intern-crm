@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
 import toast from 'react-hot-toast'
 import Link from 'next/link'
-import { ArrowLeft, Mail, Phone, GraduationCap, Briefcase, User, Calendar, Edit } from 'lucide-react'
+import { ArrowLeft, Mail, Phone, GraduationCap, Briefcase, User, Calendar, Edit, AlertCircle } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 
 export default function InternProfilePage({ params }: { params: { id: string } }) {
@@ -13,6 +13,7 @@ export default function InternProfilePage({ params }: { params: { id: string } }
   const { isAdmin } = useAuth()
   const [intern, setIntern] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -24,19 +25,27 @@ export default function InternProfilePage({ params }: { params: { id: string } }
   }, [])
 
   async function fetchIntern() {
-    const { data, error } = await supabase
-      .from('interns')
-      .select('*')
-      .eq('id', params.id)
-      .single()
+    try {
+      const { data, error } = await supabase
+        .from('interns')
+        .select('*')
+        .eq('id', params.id)
+        .maybeSingle()
 
-    if (error) {
-      toast.error('Intern not found')
-      router.push('/dashboard/interns')
-    } else {
-      setIntern(data)
+      if (error) {
+        console.error('Fetch error:', error)
+        setError(error.message)
+      } else if (!data) {
+        setError('Intern not found')
+      } else {
+        setIntern(data)
+      }
+    } catch (err) {
+      console.error('Unexpected error:', err)
+      setError('An unexpected error occurred')
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   if (loading) {
@@ -47,7 +56,21 @@ export default function InternProfilePage({ params }: { params: { id: string } }
     )
   }
 
-  if (!intern) return null
+  if (error || !intern) {
+    return (
+      <div className="bg-white rounded-2xl shadow-sm p-12 text-center">
+        <AlertCircle className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
+        <h2 className="text-xl font-semibold text-gray-800 mb-2">Intern Not Found</h2>
+        <p className="text-gray-500 mb-4">{error || 'The requested intern profile does not exist.'}</p>
+        <button
+          onClick={() => router.push('/dashboard/interns')}
+          className="mt-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-2 rounded-lg"
+        >
+          Back to Interns
+        </button>
+      </div>
+    )
+  }
 
   return (
     <div>
@@ -60,7 +83,7 @@ export default function InternProfilePage({ params }: { params: { id: string } }
         <div className="flex justify-between items-start">
           <div className="flex items-center gap-4">
             <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center text-white font-bold text-3xl">
-              {intern.full_name?.charAt(0) || '?'}
+              {intern.full_name?.charAt(0)?.toUpperCase() || '?'}
             </div>
             <div>
               <h1 className="text-3xl font-bold text-gray-800">{intern.full_name}</h1>
