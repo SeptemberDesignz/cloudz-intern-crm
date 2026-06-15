@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
-import { CheckSquare, Plus, Calendar, Clock, Trash2, CheckCircle, Circle } from 'lucide-react'
+import { useAuth } from '@/context/AuthContext'
+import { CheckSquare, Plus, Calendar, Clock, Trash2, CheckCircle, Circle, Users, Shield } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Link from 'next/link'
 
 export default function TasksPage() {
+  const { isAdmin } = useAuth()
   const [tasks, setTasks] = useState<any[]>([])
   const [interns, setInterns] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -60,7 +62,7 @@ export default function TasksPage() {
     if (error) {
       toast.error(error.message)
     } else {
-      toast.success('Task added successfully!')
+      toast.success('Task assigned successfully!')
       setShowForm(false)
       setNewTask({ title: '', description: '', intern_id: '', due_date: '', status: 'pending' })
       fetchTasks()
@@ -71,7 +73,7 @@ export default function TasksPage() {
     const newStatus = currentStatus === 'completed' ? 'pending' : 'completed'
     const { error } = await supabase
       .from('tasks')
-      .update({ status: newStatus })
+      .update({ status: newStatus, updated_at: new Date() })
       .eq('id', taskId)
     
     if (!error) {
@@ -96,6 +98,18 @@ export default function TasksPage() {
     completed: tasks.filter(t => t.status === 'completed').length
   }
 
+  if (!isAdmin) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <Shield className="w-16 h-16 text-red-300 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-gray-800">Access Denied</h2>
+          <p className="text-gray-500 mt-2">Only administrators can access this page.</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
@@ -110,7 +124,7 @@ export default function TasksPage() {
           className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-4 py-2 rounded-lg flex items-center gap-2"
         >
           <Plus className="w-4 h-4" />
-          New Task
+          Assign Task
         </button>
       </div>
 
@@ -133,7 +147,7 @@ export default function TasksPage() {
       {/* Add Task Form */}
       {showForm && (
         <div className="bg-white rounded-2xl shadow-sm p-6 mb-6">
-          <h2 className="text-xl font-semibold mb-4">Create New Task</h2>
+          <h2 className="text-xl font-semibold mb-4">Assign New Task</h2>
           <div className="space-y-4">
             <input
               type="text"
@@ -167,7 +181,7 @@ export default function TasksPage() {
             />
             <div className="flex gap-3">
               <button onClick={addTask} className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-2 rounded-lg">
-                Create Task
+                Assign Task
               </button>
               <button onClick={() => setShowForm(false)} className="border px-6 py-2 rounded-lg">
                 Cancel
@@ -183,8 +197,8 @@ export default function TasksPage() {
       ) : tasks.length === 0 ? (
         <div className="bg-white rounded-2xl shadow-sm p-12 text-center text-gray-500">
           <CheckSquare className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-          <p>No tasks yet</p>
-          <p className="text-sm">Click "New Task" to assign work to interns</p>
+          <p>No tasks assigned yet</p>
+          <p className="text-sm">Click "Assign Task" to create tasks for interns</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -207,7 +221,8 @@ export default function TasksPage() {
                       <p className="text-sm text-gray-500 mt-1">{task.description}</p>
                     )}
                     <div className="flex items-center gap-4 mt-2">
-                      <span className="text-xs text-gray-400">
+                      <span className="text-xs text-gray-400 flex items-center gap-1">
+                        <Users className="w-3 h-3" />
                         Assigned to: {task.interns?.full_name || 'Unknown'}
                       </span>
                       {task.due_date && (

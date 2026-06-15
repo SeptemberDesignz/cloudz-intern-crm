@@ -7,23 +7,25 @@ import Link from 'next/link'
 import { 
   Users, UserCheck, FileText, Calendar, TrendingUp, Award, 
   Clock, CheckSquare, BookOpen, Megaphone, BarChart, 
-  ArrowRight, Activity, Mail, FolderOpen, UserPlus
+  ArrowRight, Activity, Mail, FolderOpen, UserPlus, Shield
 } from 'lucide-react'
 
 export default function DashboardPage() {
-  const { isAdmin } = useAuth()
+  const { isAdmin, isIntern, user } = useAuth()
   const [stats, setStats] = useState({
     total: 0,
     active: 0,
     applied: 0,
     interview: 0,
     completed: 0,
-    attendance: 0,
-    tasks: 0
+    myTasks: 0,
+    myAttendance: 0
   })
-  const [recentInterns, setRecentInterns] = useState<any[]>([])
+  const [myTasks, setMyTasks] = useState<any[]>([])
+  const [myAttendance, setMyAttendance] = useState<any[]>([])
   const [recentActivities, setRecentActivities] = useState<any[]>([])
   const [currentTime, setCurrentTime] = useState('')
+  const [internId, setInternId] = useState<string | null>(null)
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -31,13 +33,38 @@ export default function DashboardPage() {
   )
 
   useEffect(() => {
-    fetchStats()
-    fetchRecentInterns()
+    fetchInternId()
+  }, [user])
+
+  useEffect(() => {
+    if (internId) {
+      if (isAdmin) {
+        fetchAdminStats()
+      } else {
+        fetchInternStats()
+        fetchMyTasks()
+        fetchMyAttendance()
+      }
+    }
     fetchRecentActivities()
     setCurrentTime(new Date().toLocaleTimeString())
-  }, [])
+  }, [internId, isAdmin])
 
-  async function fetchStats() {
+  async function fetchInternId() {
+    if (user?.email) {
+      const { data } = await supabase
+        .from('interns')
+        .select('id')
+        .eq('email', user.email)
+        .single()
+      
+      if (data) {
+        setInternId(data.id)
+      }
+    }
+  }
+
+  async function fetchAdminStats() {
     const { data } = await supabase.from('interns').select('*')
     if (data) {
       setStats({
@@ -46,70 +73,98 @@ export default function DashboardPage() {
         applied: data.filter((i: any) => i.stage === 'applied').length,
         interview: data.filter((i: any) => i.stage === 'interview').length,
         completed: data.filter((i: any) => i.stage === 'completed').length,
-        attendance: 85,
-        tasks: 12
+        myTasks: 0,
+        myAttendance: 0
       })
     }
   }
 
-  async function fetchRecentInterns() {
-    const { data } = await supabase
-      .from('interns')
+  async function fetchInternStats() {
+    // Get intern's task stats
+    const { data: tasks } = await supabase
+      .from('tasks')
       .select('*')
-      .order('created_at', { ascending: false })
+      .eq('intern_id', internId)
+    
+    // Get intern's attendance stats
+    const { data: attendance } = await supabase
+      .from('attendance')
+      .select('*')
+      .eq('intern_id', internId)
+
+    setStats({
+      total: 0,
+      active: 0,
+      applied: 0,
+      interview: 0,
+      completed: tasks?.filter(t => t.status === 'completed').length || 0,
+      myTasks: tasks?.length || 0,
+      myAttendance: attendance?.length || 0
+    })
+  }
+
+  async function fetchMyTasks() {
+    const { data } = await supabase
+      .from('tasks')
+      .select('*')
+      .eq('intern_id', internId)
+      .order('due_date', { ascending: true })
       .limit(5)
-    setRecentInterns(data || [])
+    
+    setMyTasks(data || [])
+  }
+
+  async function fetchMyAttendance() {
+    const { data } = await supabase
+      .from('attendance')
+      .select('*')
+      .eq('intern_id', internId)
+      .order('date', { ascending: false })
+      .limit(5)
+    
+    setMyAttendance(data || [])
   }
 
   async function fetchRecentActivities() {
-    setRecentActivities([
-      { id: 1, action: 'New intern added', user: 'Admin', time: '2 hours ago', icon: '➕' },
-      { id: 2, action: 'Task completed', user: 'Intern', time: '5 hours ago', icon: '✅' },
-      { id: 3, action: 'Application reviewed', user: 'HR Team', time: '1 day ago', icon: '📋' },
-    ])
+    // Get recent tasks for this intern
+    if (internId) {
+      const { data: recentTasks } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('intern_id', internId)
+        .order('created_at', { ascending: false })
+        .limit(3)
+      
+      if (recentTasks && recentTasks.length > 0) {
+        setRecentActivities(recentTasks.map(task => ({
+          id: task.id,
+          action: task.status === 'completed' ? `Task completed: ${task.title}` : `New task assigned: ${task.title}`,
+          user: 'System',
+          time: new Date(task.created_at).toLocaleDateString(),
+          icon: task.status === 'completed' ? '✅' : '📋'
+        })))
+      } else {
+        // Demo activities for testing
+        setRecentActivities([
+          { id: 1, action: 'Welcome to the internship program!', user: 'Admin', time: 'Just now', icon: '🎉' },
+        ])
+      }
+    }
   }
 
-  const statCards = [
-    { 
-      title: 'Total Interns', 
-      value: stats.total, 
-      icon: Users, 
-      gradient: 'from-blue-500 to-blue-600',
-      bgGradient: 'from-blue-50 to-blue-100',
-      trend: '+12%',
-      color: 'text-blue-600',
-      link: '/dashboard/interns'
-    },
-    { 
-      title: 'Active Interns', 
-      value: stats.active, 
-      icon: UserCheck, 
-      gradient: 'from-green-500 to-green-600',
-      bgGradient: 'from-green-50 to-green-100',
-      trend: '+8%',
-      color: 'text-green-600',
-      link: '/dashboard/interns'
-    },
-    { 
-      title: 'Applications', 
-      value: stats.applied, 
-      icon: FileText, 
-      gradient: 'from-yellow-500 to-yellow-600',
-      bgGradient: 'from-yellow-50 to-yellow-100',
-      trend: '+23%',
-      color: 'text-yellow-600',
-      link: '/dashboard/applications'
-    },
-    { 
-      title: 'In Interview', 
-      value: stats.interview, 
-      icon: Calendar, 
-      gradient: 'from-purple-500 to-purple-600',
-      bgGradient: 'from-purple-50 to-purple-100',
-      trend: '+5%',
-      color: 'text-purple-600',
-      link: '/dashboard/interns'
-    },
+  // Admin Stats Cards (with trend)
+  const adminStatCards = [
+    { title: 'Total Interns', value: stats.total, icon: Users, gradient: 'from-blue-500 to-blue-600', bgGradient: 'from-blue-50 to-blue-100', trend: '+12%', color: 'text-blue-600', link: '/dashboard/interns' },
+    { title: 'Active Interns', value: stats.active, icon: UserCheck, gradient: 'from-green-500 to-green-600', bgGradient: 'from-green-50 to-green-100', trend: '+8%', color: 'text-green-600', link: '/dashboard/interns' },
+    { title: 'Applications', value: stats.applied, icon: FileText, gradient: 'from-yellow-500 to-yellow-600', bgGradient: 'from-yellow-50 to-yellow-100', trend: '+23%', color: 'text-yellow-600', link: '/dashboard/applications' },
+    { title: 'In Interview', value: stats.interview, icon: Calendar, gradient: 'from-purple-500 to-purple-600', bgGradient: 'from-purple-50 to-purple-100', trend: '+5%', color: 'text-purple-600', link: '/dashboard/interns' },
+  ]
+
+  // Intern Stats Cards (NO trend property)
+  const internStatCards = [
+    { title: 'My Tasks', value: stats.myTasks, icon: CheckSquare, gradient: 'from-purple-500 to-purple-600', bgGradient: 'from-purple-50 to-purple-100', color: 'text-purple-600', link: '/dashboard/my-tasks' },
+    { title: 'Completed', value: stats.completed, icon: Award, gradient: 'from-green-500 to-green-600', bgGradient: 'from-green-50 to-green-100', color: 'text-green-600', link: '/dashboard/my-tasks' },
+    { title: 'Attendance Days', value: stats.myAttendance, icon: Clock, gradient: 'from-orange-500 to-orange-600', bgGradient: 'from-orange-50 to-orange-100', color: 'text-orange-600', link: '/dashboard/my-attendance' },
   ]
 
   // Admin only quick actions
@@ -119,16 +174,27 @@ export default function DashboardPage() {
     { title: 'Assign Task', icon: CheckSquare, color: 'bg-purple-500', link: '/dashboard/tasks', description: 'Create new task' },
   ]
 
-  // Intern only quick actions
+  // Intern only quick actions - NO admin features
   const internQuickActions = [
-    { title: 'My Tasks', icon: CheckSquare, color: 'bg-purple-500', link: '/dashboard/my-tasks', description: 'View my tasks' },
-    { title: 'My Attendance', icon: Clock, color: 'bg-orange-500', link: '/dashboard/my-attendance', description: 'Check my attendance' },
+    { title: 'View My Tasks', icon: CheckSquare, color: 'bg-purple-500', link: '/dashboard/my-tasks', description: 'See assigned tasks' },
+    { title: 'View Attendance', icon: Clock, color: 'bg-orange-500', link: '/dashboard/my-attendance', description: 'Check my attendance' },
     { title: 'Submit Report', icon: FileText, color: 'bg-blue-500', link: '/dashboard/intern-reports', description: 'Submit weekly report' },
   ]
 
-  const quickActions = isAdmin ? adminQuickActions : internQuickActions
+  // Intern only feature cards - NO Attendance Tracking or Task Management
+  const internFeatureCards = [
+    { title: 'My Profile', icon: UserCheck, color: 'text-blue-500', bgColor: 'bg-blue-50', description: 'View your information', link: '/dashboard/intern-profile' },
+    { title: 'My Tasks', icon: CheckSquare, color: 'text-purple-500', bgColor: 'bg-purple-50', description: 'Track your tasks', link: '/dashboard/my-tasks' },
+    { title: 'My Attendance', icon: Clock, color: 'text-orange-500', bgColor: 'bg-orange-50', description: 'View attendance', link: '/dashboard/my-attendance' },
+    { title: 'My Reports', icon: FileText, color: 'text-green-500', bgColor: 'bg-green-50', description: 'Submit reports', link: '/dashboard/intern-reports' },
+    { title: 'My Documents', icon: FolderOpen, color: 'text-amber-500', bgColor: 'bg-amber-50', description: 'Upload documents', link: '/dashboard/intern-documents' },
+    { title: 'My Schedule', icon: Calendar, color: 'text-teal-500', bgColor: 'bg-teal-50', description: 'View schedule', link: '/dashboard/schedule' },
+    { title: 'Announcements', icon: Megaphone, color: 'text-pink-500', bgColor: 'bg-pink-50', description: 'Company updates', link: '/dashboard/announcements' },
+    { title: 'Training', icon: BookOpen, color: 'text-indigo-500', bgColor: 'bg-indigo-50', description: 'Learning materials', link: '/dashboard/intern-training' },
+  ]
 
-  const featureCards = [
+  // Admin feature cards (full)
+  const adminFeatureCards = [
     { title: 'Attendance Tracking', icon: Clock, color: 'text-orange-500', bgColor: 'bg-orange-50', description: 'Track daily check-ins', link: '/dashboard/attendance' },
     { title: 'Task Management', icon: CheckSquare, color: 'text-purple-500', bgColor: 'bg-purple-50', description: 'Assign and track tasks', link: '/dashboard/tasks' },
     { title: 'Performance', icon: Award, color: 'text-red-500', bgColor: 'bg-red-50', description: 'Reviews & ratings', link: '/dashboard/performance' },
@@ -137,7 +203,13 @@ export default function DashboardPage() {
     { title: 'Documents', icon: FolderOpen, color: 'text-amber-500', bgColor: 'bg-amber-50', description: 'Store files', link: '/dashboard/documents' },
     { title: 'Reports', icon: BarChart, color: 'text-emerald-500', bgColor: 'bg-emerald-50', description: 'Analytics', link: '/dashboard/reports' },
     { title: 'Activity Log', icon: Activity, color: 'text-slate-500', bgColor: 'bg-slate-50', description: 'Audit trail', link: '/dashboard/activity' },
+    { title: 'User Management', icon: Shield, color: 'text-purple-500', bgColor: 'bg-purple-50', description: 'Manage roles', link: '/dashboard/users' },
+    { title: 'Settings', icon: UserCheck, color: 'text-gray-500', bgColor: 'bg-gray-50', description: 'System config', link: '/dashboard/settings' },
   ]
+
+  const quickActions = isAdmin ? adminQuickActions : internQuickActions
+  const featureCards = isAdmin ? adminFeatureCards : internFeatureCards
+  const statCards = isAdmin ? adminStatCards : internStatCards
 
   return (
     <div>
@@ -146,18 +218,18 @@ export default function DashboardPage() {
         <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl p-8 text-white relative overflow-hidden">
           <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-10 rounded-full transform translate-x-32 -translate-y-32"></div>
           <div className="relative z-10">
-            <h1 className="text-3xl font-bold mb-2">Welcome back! 👋</h1>
+            <h1 className="text-3xl font-bold mb-2">Welcome back, {user?.full_name || 'Intern'}! 👋</h1>
             <p className="text-blue-100">
               {isAdmin 
-                ? 'Here\'s what\'s happening with your interns today.' 
-                : 'Track your tasks, attendance, and internship progress.'}
+                ? "Here's what's happening with your interns today." 
+                : "Track your tasks, attendance, and internship progress."}
             </p>
           </div>
         </div>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         {statCards.map((card) => {
           const Icon = card.icon
           return (
@@ -169,9 +241,11 @@ export default function DashboardPage() {
                     <div className={`p-3 rounded-xl bg-gradient-to-r ${card.bgGradient}`}>
                       <Icon className={`w-6 h-6 ${card.color}`} />
                     </div>
-                    <span className="text-xs font-semibold text-green-600 bg-green-50 px-2 py-1 rounded-full">
-                      {card.trend}
-                    </span>
+                    {(card as any).trend && (
+                      <span className="text-xs font-semibold text-green-600 bg-green-50 px-2 py-1 rounded-full">
+                        {(card as any).trend}
+                      </span>
+                    )}
                   </div>
                   <h3 className="text-2xl font-bold text-gray-800 mb-1">{card.value}</h3>
                   <p className="text-sm text-gray-600">{card.title}</p>
@@ -209,66 +283,49 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Recent Interns and Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        {/* Recent Interns - Only show for admins */}
-        {isAdmin && (
-          <div className="bg-white rounded-2xl shadow-sm p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="font-semibold text-gray-800">Recent Interns</h2>
-              <Link href="/dashboard/interns" className="text-sm text-purple-500 hover:text-purple-600">
-                View All →
-              </Link>
-            </div>
-            {recentInterns.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <Users className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-                <p>No interns yet</p>
-                <Link href="/dashboard/add-intern" className="text-sm text-blue-500 mt-2 inline-block">
-                  Add your first intern →
-                </Link>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {recentInterns.map((intern) => (
-                  <Link key={intern.id} href={`/dashboard/interns/${intern.id}`}>
-                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer">
-                      <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold">
-                        {intern.full_name?.charAt(0) || '?'}
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-medium text-gray-800">{intern.full_name}</p>
-                        <p className="text-xs text-gray-500">{intern.email}</p>
-                      </div>
-                      <div className="text-right">
-                        <span className={`text-xs px-2 py-1 rounded-full ${
-                          intern.stage === 'active' ? 'bg-green-100 text-green-700' :
-                          intern.stage === 'applied' ? 'bg-yellow-100 text-yellow-700' :
-                          'bg-gray-100 text-gray-700'
-                        }`}>
-                          {intern.stage}
-                        </span>
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Recent Activity - Show for both but different content */}
-        <div className="bg-white rounded-2xl shadow-sm p-6">
+      {/* My Tasks Section - For Interns */}
+      {isIntern && myTasks.length > 0 && (
+        <div className="bg-white rounded-2xl shadow-sm p-6 mb-8">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="font-semibold text-gray-800">Recent Activity</h2>
-            {isAdmin && (
-              <Link href="/dashboard/activity" className="text-sm text-purple-500 hover:text-purple-600">
-                View All →
-              </Link>
-            )}
+            <h2 className="font-semibold text-gray-800">Recent Tasks</h2>
+            <Link href="/dashboard/my-tasks" className="text-sm text-purple-500 hover:text-purple-600">
+              View All Tasks →
+            </Link>
           </div>
           <div className="space-y-3">
-            {recentActivities.map((activity) => (
+            {myTasks.map((task) => (
+              <div key={task.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                <div>
+                  <p className="font-medium text-gray-800">{task.title}</p>
+                  {task.due_date && (
+                    <p className="text-xs text-gray-500">Due: {new Date(task.due_date).toLocaleDateString()}</p>
+                  )}
+                </div>
+                <span className={`text-xs px-2 py-1 rounded-full ${
+                  task.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+                }`}>
+                  {task.status || 'pending'}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Recent Activity */}
+      <div className="bg-white rounded-2xl shadow-sm p-6 mb-8">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="font-semibold text-gray-800">Recent Activity</h2>
+        </div>
+        <div className="space-y-3">
+          {recentActivities.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <Activity className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+              <p>No recent activity</p>
+              {isIntern && <p className="text-sm">When admins assign tasks, they will appear here</p>}
+            </div>
+          ) : (
+            recentActivities.map((activity) => (
               <div key={activity.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
                 <div className="text-2xl">{activity.icon}</div>
                 <div className="flex-1">
@@ -277,12 +334,12 @@ export default function DashboardPage() {
                 </div>
                 <span className="text-xs text-gray-400">{activity.time}</span>
               </div>
-            ))}
-          </div>
+            ))
+          )}
         </div>
       </div>
 
-      {/* Feature Cards - All CRM Features */}
+      {/* Feature Cards - Role Based */}
       <div>
         <h2 className="text-lg font-semibold text-gray-800 mb-4">All Features</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
