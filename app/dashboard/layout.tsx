@@ -37,22 +37,23 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
   const { user, loading, isAdmin, isIntern } = useAuth()
+  const [showNotifications, setShowNotifications] = useState(false)
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
 
-  // Check authentication on mount
+  // Check authentication in useEffect, not during render
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession()
-      if (!session && !loading) {
+      if (!session && !loading && !user) {
         router.push('/login')
       }
     }
     checkAuth()
-  }, [loading, router, supabase])
+  }, [loading, router, supabase, user])
 
   async function handleLogout() {
     await supabase.auth.signOut()
@@ -71,14 +72,13 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     )
   }
 
-  // If no user, redirect to login
   if (!user) {
-    router.push('/login')
     return null
   }
 
   // ============================================
   // INTERN MENU - LIMITED ACCESS ONLY
+  // NO admin features like Add Intern, Attendance, Tasks
   // ============================================
   const internMenuItems = [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, description: 'Overview' },
@@ -190,9 +190,9 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
           <MenuSection title={menuTitle} items={menuItems} />
         </nav>
 
-        {/* User Section */}
+        {/* User Section with Logout Button */}
         <div className="border-t border-gray-200 p-4 bg-gray-50/50">
-          <div className="flex items-center gap-3 mb-3">
+          <div className="flex items-center gap-3 mb-4">
             <div className="flex-1">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold text-sm shadow-md">
@@ -215,9 +215,10 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
             </div>
           </div>
           
+          {/* Logout Button - Visible for both Admin and Intern */}
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer transition-all duration-200 hover:bg-red-50 text-red-600 group mt-2"
+            className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl cursor-pointer transition-all duration-200 bg-red-50 hover:bg-red-100 text-red-600 group"
           >
             <LogOut className="w-5 h-5 group-hover:scale-110 transition-transform" />
             <span className="font-medium">Logout</span>

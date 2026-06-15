@@ -2,14 +2,16 @@
 
 import { useEffect, useState } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
+import { useAuth } from '@/context/AuthContext'
+import Link from 'next/link'
 import { 
   Users, UserCheck, FileText, Calendar, TrendingUp, Award, 
   Clock, CheckSquare, BookOpen, Megaphone, BarChart, 
-  ArrowRight, Activity, Mail, FolderOpen 
+  ArrowRight, Activity, Mail, FolderOpen, UserPlus
 } from 'lucide-react'
-import Link from 'next/link'
 
 export default function DashboardPage() {
+  const { isAdmin } = useAuth()
   const [stats, setStats] = useState({
     total: 0,
     active: 0,
@@ -32,7 +34,6 @@ export default function DashboardPage() {
     fetchStats()
     fetchRecentInterns()
     fetchRecentActivities()
-    // Set current time only on client side to avoid hydration mismatch
     setCurrentTime(new Date().toLocaleTimeString())
   }, [])
 
@@ -111,12 +112,21 @@ export default function DashboardPage() {
     },
   ]
 
-  const quickActionCards = [
-    { title: 'Add New Intern', icon: UserCheck, color: 'bg-green-500', link: '/dashboard/add-intern', description: 'Create new intern profile' },
+  // Admin only quick actions
+  const adminQuickActions = [
+    { title: 'Add New Intern', icon: UserPlus, color: 'bg-green-500', link: '/dashboard/add-intern', description: 'Create new intern profile' },
     { title: 'Mark Attendance', icon: Clock, color: 'bg-orange-500', link: '/dashboard/attendance', description: 'Record daily attendance' },
     { title: 'Assign Task', icon: CheckSquare, color: 'bg-purple-500', link: '/dashboard/tasks', description: 'Create new task' },
-    { title: 'Send Announcement', icon: Megaphone, color: 'bg-pink-500', link: '/dashboard/announcements', description: 'Notify all interns' },
   ]
+
+  // Intern only quick actions
+  const internQuickActions = [
+    { title: 'My Tasks', icon: CheckSquare, color: 'bg-purple-500', link: '/dashboard/my-tasks', description: 'View my tasks' },
+    { title: 'My Attendance', icon: Clock, color: 'bg-orange-500', link: '/dashboard/my-attendance', description: 'Check my attendance' },
+    { title: 'Submit Report', icon: FileText, color: 'bg-blue-500', link: '/dashboard/intern-reports', description: 'Submit weekly report' },
+  ]
+
+  const quickActions = isAdmin ? adminQuickActions : internQuickActions
 
   const featureCards = [
     { title: 'Attendance Tracking', icon: Clock, color: 'text-orange-500', bgColor: 'bg-orange-50', description: 'Track daily check-ins', link: '/dashboard/attendance' },
@@ -137,7 +147,11 @@ export default function DashboardPage() {
           <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-10 rounded-full transform translate-x-32 -translate-y-32"></div>
           <div className="relative z-10">
             <h1 className="text-3xl font-bold mb-2">Welcome back! 👋</h1>
-            <p className="text-blue-100">Here's what's happening with your interns today.</p>
+            <p className="text-blue-100">
+              {isAdmin 
+                ? 'Here\'s what\'s happening with your interns today.' 
+                : 'Track your tasks, attendance, and internship progress.'}
+            </p>
           </div>
         </div>
       </div>
@@ -169,11 +183,11 @@ export default function DashboardPage() {
         })}
       </div>
 
-      {/* Quick Actions */}
+      {/* Quick Actions - Role Based */}
       <div className="mb-8">
         <h2 className="text-lg font-semibold text-gray-800 mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {quickActionCards.map((action) => {
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {quickActions.map((action) => {
             const Icon = action.icon
             return (
               <Link key={action.title} href={action.link}>
@@ -197,57 +211,61 @@ export default function DashboardPage() {
 
       {/* Recent Interns and Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        {/* Recent Interns */}
-        <div className="bg-white rounded-2xl shadow-sm p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="font-semibold text-gray-800">Recent Interns</h2>
-            <Link href="/dashboard/interns" className="text-sm text-purple-500 hover:text-purple-600">
-              View All →
-            </Link>
-          </div>
-          {recentInterns.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <Users className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-              <p>No interns yet</p>
-              <Link href="/dashboard/add-intern" className="text-sm text-blue-500 mt-2 inline-block">
-                Add your first intern →
+        {/* Recent Interns - Only show for admins */}
+        {isAdmin && (
+          <div className="bg-white rounded-2xl shadow-sm p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="font-semibold text-gray-800">Recent Interns</h2>
+              <Link href="/dashboard/interns" className="text-sm text-purple-500 hover:text-purple-600">
+                View All →
               </Link>
             </div>
-          ) : (
-            <div className="space-y-3">
-              {recentInterns.map((intern) => (
-                <Link key={intern.id} href={`/dashboard/interns/${intern.id}`}>
-                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer">
-                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold">
-                      {intern.full_name?.charAt(0) || '?'}
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-medium text-gray-800">{intern.full_name}</p>
-                      <p className="text-xs text-gray-500">{intern.email}</p>
-                    </div>
-                    <div className="text-right">
-                      <span className={`text-xs px-2 py-1 rounded-full ${
-                        intern.stage === 'active' ? 'bg-green-100 text-green-700' :
-                        intern.stage === 'applied' ? 'bg-yellow-100 text-yellow-700' :
-                        'bg-gray-100 text-gray-700'
-                      }`}>
-                        {intern.stage}
-                      </span>
-                    </div>
-                  </div>
+            {recentInterns.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <Users className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                <p>No interns yet</p>
+                <Link href="/dashboard/add-intern" className="text-sm text-blue-500 mt-2 inline-block">
+                  Add your first intern →
                 </Link>
-              ))}
-            </div>
-          )}
-        </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {recentInterns.map((intern) => (
+                  <Link key={intern.id} href={`/dashboard/interns/${intern.id}`}>
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer">
+                      <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold">
+                        {intern.full_name?.charAt(0) || '?'}
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-medium text-gray-800">{intern.full_name}</p>
+                        <p className="text-xs text-gray-500">{intern.email}</p>
+                      </div>
+                      <div className="text-right">
+                        <span className={`text-xs px-2 py-1 rounded-full ${
+                          intern.stage === 'active' ? 'bg-green-100 text-green-700' :
+                          intern.stage === 'applied' ? 'bg-yellow-100 text-yellow-700' :
+                          'bg-gray-100 text-gray-700'
+                        }`}>
+                          {intern.stage}
+                        </span>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
-        {/* Recent Activity */}
+        {/* Recent Activity - Show for both but different content */}
         <div className="bg-white rounded-2xl shadow-sm p-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="font-semibold text-gray-800">Recent Activity</h2>
-            <Link href="/dashboard/activity" className="text-sm text-purple-500 hover:text-purple-600">
-              View All →
-            </Link>
+            {isAdmin && (
+              <Link href="/dashboard/activity" className="text-sm text-purple-500 hover:text-purple-600">
+                View All →
+              </Link>
+            )}
           </div>
           <div className="space-y-3">
             {recentActivities.map((activity) => (
@@ -265,7 +283,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Feature Cards - All CRM Features */}
-      <div className="mb-8">
+      <div>
         <h2 className="text-lg font-semibold text-gray-800 mb-4">All Features</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {featureCards.map((feature) => {
@@ -289,8 +307,8 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Stats Summary Footer - Fixed hydration issue */}
-      <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-4">
+      {/* Stats Summary Footer */}
+      <div className="mt-8 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-4">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-2">
             <Activity className="w-5 h-5 text-gray-500" />
