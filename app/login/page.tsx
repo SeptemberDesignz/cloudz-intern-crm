@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
 import Image from 'next/image'
-import { Mail, Lock, ArrowRight, UserPlus, LogIn, Briefcase, GraduationCap } from 'lucide-react'
+import { Mail, Lock, ArrowRight, UserPlus, LogIn, Briefcase, GraduationCap, Eye, EyeOff } from 'lucide-react'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -12,6 +12,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [isSignUp, setIsSignUp] = useState(false)
   const [loginType, setLoginType] = useState<'intern' | 'admin'>('intern')
+  const [showPassword, setShowPassword] = useState(false)
   const router = useRouter()
 
   const supabase = createBrowserClient(
@@ -19,68 +20,25 @@ export default function LoginPage() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
 
-  // Admin fixed credentials
-  const ADMIN_EMAIL = 'admin@cloudz.com'
-  const ADMIN_PASSWORD = 'Admin123456'
-
-  const handleAdminLogin = async () => {
-    setLoading(true)
-    try {
-      const { error } = await supabase.auth.signInWithPassword({ 
-        email: ADMIN_EMAIL, 
-        password: ADMIN_PASSWORD 
-      })
-      if (error) {
-        alert('Admin login failed. Please contact system administrator.')
-      } else {
-        // Set admin role in database
-        const { data: userData } = await supabase
-          .from('users')
-          .select('role')
-          .eq('email', ADMIN_EMAIL)
-          .single()
-        
-        if (!userData) {
-          // Create admin user record
-          const { data: { user } } = await supabase.auth.getUser()
-          await supabase.from('users').insert({
-            id: user?.id,
-            email: ADMIN_EMAIL,
-            full_name: 'Administrator',
-            role: 'admin'
-          })
-        } else if (userData.role !== 'admin') {
-          // Update to admin role
-          await supabase
-            .from('users')
-            .update({ role: 'admin' })
-            .eq('email', ADMIN_EMAIL)
-        }
-        
-        router.push('/dashboard')
-      }
-    } catch (err) {
-      alert('Admin login failed')
-    }
-    setLoading(false)
-  }
-
-  const handleInternLogin = async (e: React.FormEvent) => {
+  // Handle Intern Login/Signup
+  const handleInternSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
 
     if (isSignUp) {
-      const { error } = await supabase.auth.signUp({ 
+      // Sign up new intern
+      const { data, error } = await supabase.auth.signUp({ 
         email, 
         password,
         options: {
           data: { full_name: email.split('@')[0] }
         }
       })
+      
       if (error) {
         alert(`Signup failed: ${error.message}`)
       } else {
-        // Create intern record
+        // Create user record in users table
         const { data: { user } } = await supabase.auth.getUser()
         if (user) {
           await supabase.from('users').insert({
@@ -90,17 +48,20 @@ export default function LoginPage() {
             role: 'intern'
           })
           
+          // Also create intern record
           await supabase.from('interns').insert({
             full_name: email.split('@')[0],
             email: email,
             stage: 'applied'
           })
         }
-        alert('Account created! Please sign in.')
+        alert('Account created successfully! Please sign in.')
         setIsSignUp(false)
       }
     } else {
+      // Sign in existing intern
       const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+      
       if (error) {
         alert(`Login failed: ${error.message}`)
       } else {
@@ -118,15 +79,85 @@ export default function LoginPage() {
             full_name: email.split('@')[0],
             role: 'intern'
           })
-        } else if (userData.role !== 'intern' && userData.role !== 'admin') {
-          await supabase
-            .from('users')
-            .update({ role: 'intern' })
-            .eq('id', data.user?.id)
         }
         
         router.push('/dashboard')
       }
+    }
+    setLoading(false)
+  }
+
+  // Handle Admin Login
+  const handleAdminSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+
+    // Admin fixed credentials
+    const ADMIN_EMAIL = 'admin@cloudz.com'
+    const ADMIN_PASSWORD = 'Admin123456'
+
+    if (email !== ADMIN_EMAIL) {
+      alert('Invalid admin email. Please use admin@cloudz.com')
+      setLoading(false)
+      return
+    }
+
+    if (password !== ADMIN_PASSWORD) {
+      alert('Invalid admin password')
+      setLoading(false)
+      return
+    }
+
+    try {
+      // Sign in with Supabase
+      const { data, error } = await supabase.auth.signInWithPassword({ 
+        email: ADMIN_EMAIL, 
+        password: ADMIN_PASSWORD 
+      })
+      
+      if (error) {
+        // If admin doesn't exist in auth, create them
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+          email: ADMIN_EMAIL,
+          password: ADMIN_PASSWORD,
+          options: {
+            data: { full_name: 'System Administrator' }
+          }
+        })
+        
+        if (signUpError) {
+          alert('Admin setup failed. Please contact support.')
+          setLoading(false)
+          return
+        }
+        
+        // Sign in again after creation
+        const { error: loginError } = await supabase.auth.signInWithPassword({
+          email: ADMIN_EMAIL,
+          password: ADMIN_PASSWORD
+        })
+        
+        if (loginError) {
+          alert('Admin login failed')
+          setLoading(false)
+          return
+        }
+      }
+      
+      // Set admin role in database
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        await supabase.from('users').upsert({
+          id: user.id,
+          email: ADMIN_EMAIL,
+          full_name: 'System Administrator',
+          role: 'admin'
+        })
+      }
+      
+      router.push('/dashboard')
+    } catch (err) {
+      alert('Admin login failed')
     }
     setLoading(false)
   }
@@ -136,7 +167,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         <div className="bg-white rounded-2xl shadow-xl p-8">
           {/* Logo */}
-          <div className="flex justify-center mb-8">
+          <div className="flex justify-center mb-6">
             <div className="w-32 h-32 relative">
               <Image
                 src="/logo.png"
@@ -149,7 +180,7 @@ export default function LoginPage() {
             </div>
           </div>
           
-          <h1 className="text-2xl font-bold text-center text-gray-800 mb-2">
+          <h1 className="text-2xl font-bold text-center text-gray-800">
             Cloudz Travels
           </h1>
           <p className="text-center text-gray-500 mb-8">
@@ -159,7 +190,13 @@ export default function LoginPage() {
           {/* Login Type Selector */}
           <div className="flex gap-4 mb-8">
             <button
-              onClick={() => setLoginType('intern')}
+              type="button"
+              onClick={() => {
+                setLoginType('intern')
+                setEmail('')
+                setPassword('')
+                setIsSignUp(false)
+              }}
               className={`flex-1 py-3 rounded-xl font-semibold transition-all ${
                 loginType === 'intern'
                   ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg'
@@ -172,7 +209,13 @@ export default function LoginPage() {
               </div>
             </button>
             <button
-              onClick={() => setLoginType('admin')}
+              type="button"
+              onClick={() => {
+                setLoginType('admin')
+                setEmail('')
+                setPassword('')
+                setIsSignUp(false)
+              }}
               className={`flex-1 py-3 rounded-xl font-semibold transition-all ${
                 loginType === 'admin'
                   ? 'bg-gradient-to-r from-gray-800 to-gray-900 text-white shadow-lg'
@@ -188,7 +231,7 @@ export default function LoginPage() {
 
           {/* Intern Login Form */}
           {loginType === 'intern' && (
-            <form onSubmit={handleInternLogin} className="space-y-5">
+            <form onSubmit={handleInternSubmit} className="space-y-5">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Email Address
@@ -213,13 +256,20 @@ export default function LoginPage() {
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                   <input
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="••••••••"
                     required
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
                 </div>
               </div>
               
@@ -244,23 +294,69 @@ export default function LoginPage() {
             </form>
           )}
 
-          {/* Admin Login Button */}
+          {/* Admin Login Form */}
           {loginType === 'admin' && (
-            <div className="space-y-5">
-              <div className="bg-gray-50 rounded-lg p-4 text-center">
-                <p className="text-sm text-gray-600 mb-2">Administrator Access</p>
-                <p className="text-xs text-gray-500">Secure access for authorized personnel only</p>
+            <form onSubmit={handleAdminSubmit} className="space-y-5">
+              <div className="bg-blue-50 rounded-lg p-3 text-center mb-4">
+                <p className="text-sm text-blue-700">Administrator Access Only</p>
+                <p className="text-xs text-blue-600 mt-1">Authorized personnel only</p>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Admin Email
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-800 focus:border-transparent"
+                    placeholder="admin@cloudz.com"
+                    required
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Admin Password
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-800 focus:border-transparent"
+                    placeholder="••••••••"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
               </div>
               
               <button
-                onClick={handleAdminLogin}
+                type="submit"
                 disabled={loading}
                 className="w-full bg-gradient-to-r from-gray-800 to-gray-900 text-white py-3 rounded-lg font-semibold hover:opacity-90 transition-all flex items-center justify-center gap-2"
               >
-                {loading ? 'Please wait...' : 'Continue as Administrator'}
+                {loading ? 'Please wait...' : 'Login as Administrator'}
                 <ArrowRight className="w-4 h-4" />
               </button>
-            </div>
+              
+              <div className="text-center text-xs text-gray-400 mt-4">
+                <p>Default Admin Credentials:</p>
+                <p>Email: admin@cloudz.com | Password: Admin123456</p>
+              </div>
+            </form>
           )}
         </div>
       </div>
