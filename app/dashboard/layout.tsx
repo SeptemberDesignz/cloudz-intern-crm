@@ -29,7 +29,10 @@ import {
   Mail,
   FolderOpen,
   Eye,
-  User
+  User,
+  Upload,
+  FileCheck,
+  GraduationCap
 } from 'lucide-react'
 
 function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
@@ -65,64 +68,52 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 
   if (!user) return null
 
-  // Menu items based on role
-  const mainMenuItems = [
-    { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin', 'viewer', 'intern'] },
+  // ============================================
+  // INTERN MENU - Limited access only
+  // ============================================
+  const internMenuItems = [
+    { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, description: 'Overview' },
+    { href: '/dashboard/intern-profile', label: 'My Profile', icon: User, description: 'View my information' },
+    { href: '/dashboard/my-tasks', label: 'My Tasks', icon: CheckSquare, description: 'View and update tasks' },
+    { href: '/dashboard/my-attendance', label: 'My Attendance', icon: Clock, description: 'Check attendance records' },
+    { href: '/dashboard/intern-reports', label: 'My Reports', icon: FileText, description: 'Submit reports' },
+    { href: '/dashboard/intern-documents', label: 'My Documents', icon: Upload, description: 'Upload required documents' },
+    { href: '/dashboard/schedule', label: 'My Schedule', icon: Calendar, description: 'View internship schedule' },
+    { href: '/dashboard/announcements', label: 'Announcements', icon: Megaphone, description: 'Company announcements' },
+    { href: '/dashboard/intern-training', label: 'Training', icon: BookOpen, description: 'Learning materials' },
   ]
 
-  // Admin/Viewer menu items
-  const internManagementItems = [
-    { href: '/dashboard/interns', label: 'Intern Database', icon: Users, roles: ['admin', 'viewer'], description: 'All intern profiles' },
-    { href: '/dashboard/add-intern', label: 'Add Intern', icon: UserPlus, roles: ['admin'], description: 'Create new profile' },
-    { href: '/dashboard/applications', label: 'Applications', icon: FileText, roles: ['admin', 'viewer'], description: 'Track applications' },
-  ]
-
-  // Intern only menu items
-  const myProfileItems = [
-    { href: `/dashboard/intern-profile`, label: 'My Profile', icon: User, roles: ['intern'], description: 'View my information' },
-    { href: '/dashboard/my-tasks', label: 'My Tasks', icon: CheckSquare, roles: ['intern'], description: 'My assignments' },
-    { href: '/dashboard/my-attendance', label: 'My Attendance', icon: Clock, roles: ['intern'], description: 'My attendance record' },
-  ]
-
-  const trackingItems = [
-    { href: '/dashboard/attendance', label: 'Attendance', icon: Clock, roles: ['admin', 'viewer'], description: 'Daily attendance' },
-    { href: '/dashboard/tasks', label: 'Tasks', icon: CheckSquare, roles: ['admin', 'viewer'], description: 'Assign & track' },
-    { href: '/dashboard/performance', label: 'Performance', icon: Award, roles: ['admin', 'viewer'], description: 'Reviews & ratings' },
-  ]
-
-  const developmentItems = [
-    { href: '/dashboard/training', label: 'Training', icon: BookOpen, roles: ['admin', 'viewer', 'intern'], description: 'Learning materials' },
-    { href: '/dashboard/calendar', label: 'Calendar', icon: Calendar, roles: ['admin', 'viewer', 'intern'], description: 'Events & deadlines' },
-  ]
-
-  const communicationItems = [
-    { href: '/dashboard/announcements', label: 'Announcements', icon: Megaphone, roles: ['admin', 'viewer', 'intern'], description: 'View updates' },
-    { href: '/dashboard/messages', label: 'Messages', icon: Mail, roles: ['admin', 'viewer', 'intern'], description: 'Communicate' },
-  ]
-
-  const reportsItems = [
-    { href: '/dashboard/reports', label: 'Reports', icon: BarChart, roles: ['admin', 'viewer'], description: 'Analytics' },
-    { href: '/dashboard/documents', label: 'Documents', icon: FolderOpen, roles: ['admin', 'viewer', 'intern'], description: 'Files & certificates' },
-    { href: '/dashboard/activity', label: 'Activity Log', icon: Activity, roles: ['admin'], description: 'Audit trail' },
-  ]
-
-  const settingsItems = [
-    { href: '/dashboard/users', label: 'User Management', icon: Shield, roles: ['admin'], description: 'Manage access' },
-    { href: '/dashboard/settings', label: 'Settings', icon: Settings, roles: ['admin', 'viewer'], description: 'System config' },
+  // ============================================
+  // ADMIN/MANAGER MENU - Full access
+  // ============================================
+  const adminMenuItems = [
+    { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, description: 'Overview & Stats' },
+    { href: '/dashboard/interns', label: 'Intern Database', icon: Users, description: 'All intern profiles' },
+    { href: '/dashboard/add-intern', label: 'Add Intern', icon: UserPlus, description: 'Create new profile' },
+    { href: '/dashboard/applications', label: 'Applications', icon: FileText, description: 'Track applications' },
+    { href: '/dashboard/attendance', label: 'Attendance', icon: Clock, description: 'Daily attendance' },
+    { href: '/dashboard/tasks', label: 'Tasks', icon: CheckSquare, description: 'Assign & track' },
+    { href: '/dashboard/performance', label: 'Performance', icon: Award, description: 'Reviews & ratings' },
+    { href: '/dashboard/training', label: 'Training', icon: BookOpen, description: 'Learning materials' },
+    { href: '/dashboard/calendar', label: 'Calendar', icon: Calendar, description: 'Events & deadlines' },
+    { href: '/dashboard/announcements', label: 'Announcements', icon: Megaphone, description: 'Send updates' },
+    { href: '/dashboard/messages', label: 'Messages', icon: Mail, description: 'Communicate' },
+    { href: '/dashboard/reports', label: 'Reports', icon: BarChart, description: 'Analytics' },
+    { href: '/dashboard/documents', label: 'Documents', icon: FolderOpen, description: 'Files & certificates' },
+    { href: '/dashboard/activity', label: 'Activity Log', icon: Activity, description: 'Audit trail' },
+    { href: '/dashboard/users', label: 'User Management', icon: Shield, description: 'Manage access' },
+    { href: '/dashboard/settings', label: 'Settings', icon: Settings, description: 'System config' },
   ]
 
   const MenuSection = ({ title, items }: { title: string; items: any[] }) => {
-    // Filter items based on user role
-    const visibleItems = items.filter(item => item.roles.includes(user.role))
-    
-    if (visibleItems.length === 0) return null
+    if (items.length === 0) return null
     
     return (
       <div className="mb-6">
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-4 mb-2">
           {title}
         </p>
-        {visibleItems.map((item) => {
+        {items.map((item) => {
           const Icon = item.icon
           const isActive = pathname === item.href || pathname?.startsWith(item.href + '/')
           return (
@@ -133,7 +124,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                   : 'hover:bg-gray-100'
               }`}>
                 <div className="flex items-center gap-3 px-4 py-3">
-                  <Icon className={`w-5 h-5 ${isActive ? 'text-white' : item.color || 'text-gray-500'} transition-transform group-hover:scale-110`} />
+                  <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-gray-500'} transition-transform group-hover:scale-110`} />
                   <div className="flex-1">
                     <span className={`font-medium text-sm ${isActive ? 'text-white' : 'text-gray-700'}`}>
                       {item.label}
@@ -153,6 +144,10 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
       </div>
     )
   }
+
+  // Select menu based on role
+  const menuItems = isIntern ? internMenuItems : adminMenuItems
+  const menuTitle = isIntern ? "INTERN PORTAL" : "MAIN MENU"
 
   return (
     <div className="flex h-screen bg-gradient-to-br from-gray-50 to-gray-100">
@@ -175,7 +170,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                 Cloudz Travels
               </h1>
               <p className="text-xs text-gray-500">
-                {isAdmin ? 'Admin Portal' : isIntern ? 'Intern Portal' : 'Viewer Portal'}
+                {isIntern ? 'Intern Portal' : isViewer ? 'Viewer Portal' : 'Admin Portal'}
               </p>
             </div>
           </div>
@@ -183,25 +178,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         
         {/* Navigation Menu */}
         <nav className="flex-1 overflow-y-auto py-4">
-          <MenuSection title="MAIN" items={mainMenuItems} />
-          
-          {isIntern ? (
-            <MenuSection title="MY PORTAL" items={myProfileItems} />
-          ) : (
-            <>
-              <MenuSection title="INTERN MANAGEMENT" items={internManagementItems} />
-              <MenuSection title="TRACKING" items={trackingItems} />
-            </>
-          )}
-          
-          <MenuSection title="DEVELOPMENT" items={developmentItems} />
-          <MenuSection title="COMMUNICATION" items={communicationItems} />
-          
-          {(isAdmin || isViewer) && (
-            <MenuSection title="REPORTS & ANALYTICS" items={reportsItems} />
-          )}
-          
-          <MenuSection title="ADMIN" items={settingsItems} />
+          <MenuSection title={menuTitle} items={menuItems} />
         </nav>
 
         {/* User Section */}
@@ -243,7 +220,6 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto">
-        {/* Premium Header */}
         <div className="bg-white/50 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-10">
           <div className="px-8 py-4">
             <div className="flex justify-between items-center">
@@ -253,29 +229,17 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                 </h2>
                 <p className="text-sm text-gray-500 mt-1">
                   {isIntern 
-                    ? 'Welcome to your personal dashboard. Track your tasks and attendance.' 
+                    ? 'Welcome to your personal dashboard. Track your tasks, attendance, and documents.' 
                     : isViewer
                     ? 'View-only access. You can see data but cannot modify.'
                     : 'Complete solution for managing interns, attendance, tasks, and performance'}
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                {isViewer && (
-                  <span className="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-full flex items-center gap-1">
-                    <Eye className="w-3 h-3" />
-                    Read Only
-                  </span>
-                )}
                 {isIntern && (
                   <span className="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full flex items-center gap-1">
-                    <User className="w-3 h-3" />
+                    <GraduationCap className="w-3 h-3" />
                     Intern Access
-                  </span>
-                )}
-                {isAdmin && (
-                  <span className="text-xs bg-purple-100 text-purple-700 px-3 py-1 rounded-full flex items-center gap-1">
-                    <Shield className="w-3 h-3" />
-                    Full Access
                   </span>
                 )}
                 <span className="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full">

@@ -61,11 +61,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .eq('id', authUser.id)
           .single()
 
+        // Check if user is an intern (has matching record in interns table)
+        let role = userData?.role || 'viewer'
+        
+        // If role is not set but user exists in interns table, set as intern
+        if (!userData) {
+          const { data: internData } = await supabase
+            .from('interns')
+            .select('id')
+            .eq('email', authUser.email)
+            .single()
+          
+          if (internData) {
+            role = 'intern'
+            // Create user record
+            await supabase.from('users').insert({
+              id: authUser.id,
+              email: authUser.email,
+              full_name: authUser.user_metadata?.full_name || authUser.email!.split('@')[0],
+              role: 'intern'
+            })
+          }
+        }
+
         setUser({
           id: authUser.id,
           email: authUser.email!,
           full_name: userData?.full_name || authUser.user_metadata?.full_name || authUser.email!.split('@')[0],
-          role: userData?.role || 'viewer'
+          role: role as 'admin' | 'intern' | 'viewer'
         })
       }
     } catch (error) {
