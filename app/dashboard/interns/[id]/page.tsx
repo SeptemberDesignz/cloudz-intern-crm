@@ -6,35 +6,28 @@ import { createBrowserClient } from '@supabase/ssr'
 import toast from 'react-hot-toast'
 import Link from 'next/link'
 import { ArrowLeft, Mail, Phone, GraduationCap, Briefcase, User, Calendar, Edit } from 'lucide-react'
-import * as React from 'react'
+import { useAuth } from '@/context/AuthContext'
 
-// Important: params is now a Promise in Next.js 15+
-export default function InternProfilePage({ params }: { params: Promise<{ id: string }> }) {
+export default function InternProfilePage({ params }: { params: { id: string } }) {
   const router = useRouter()
+  const { isAdmin } = useAuth()
   const [intern, setIntern] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [internId, setInternId] = useState<string | null>(null)
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
 
-  // Unwrap the params Promise using React.use()
-  const unwrappedParams = React.use(params)
-  const id = unwrappedParams.id
-
   useEffect(() => {
-    if (id) {
-      fetchIntern()
-    }
-  }, [id])
+    fetchIntern()
+  }, [])
 
   async function fetchIntern() {
     const { data, error } = await supabase
       .from('interns')
       .select('*')
-      .eq('id', id)
+      .eq('id', params.id)
       .single()
 
     if (error) {
@@ -74,12 +67,14 @@ export default function InternProfilePage({ params }: { params: Promise<{ id: st
               <p className="text-gray-500 mt-1">{intern.email}</p>
             </div>
           </div>
-          <Link href={`/dashboard/edit-intern/${id}`}>
-            <button className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-4 py-2 rounded-lg flex items-center gap-2">
-              <Edit className="w-4 h-4" />
-              Edit Profile
-            </button>
-          </Link>
+          {isAdmin && (
+            <Link href={`/dashboard/edit-intern/${intern.id}`}>
+              <button className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-4 py-2 rounded-lg flex items-center gap-2">
+                <Edit className="w-4 h-4" />
+                Edit Profile
+              </button>
+            </Link>
+          )}
         </div>
       </div>
 

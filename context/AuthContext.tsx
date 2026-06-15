@@ -16,9 +16,6 @@ interface AuthContextType {
   isAdmin: boolean
   isIntern: boolean
   isViewer: boolean
-  canEdit: boolean
-  canDelete: boolean
-  canViewAll: boolean
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -27,9 +24,6 @@ const AuthContext = createContext<AuthContextType>({
   isAdmin: false,
   isIntern: false,
   isViewer: false,
-  canEdit: false,
-  canDelete: false,
-  canViewAll: false,
 })
 
 export function useAuth() {
@@ -54,25 +48,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { data: { user: authUser } } = await supabase.auth.getUser()
       
       if (authUser) {
-        // Get user role from database
         const { data: userData } = await supabase
           .from('users')
           .select('*')
           .eq('id', authUser.id)
           .single()
 
-        let role = userData?.role || 'viewer'
+        let role: 'admin' | 'intern' | 'viewer' = 'intern'
         
-        // If no role set but user exists in interns table, set as intern
-        if (!userData) {
-          const { data: internData } = await supabase
-            .from('interns')
+        if (userData?.role === 'admin') {
+          role = 'admin'
+        } else if (authUser.email === 'admin@cloudz.com') {
+          role = 'admin'
+          await supabase.from('users').upsert({
+            id: authUser.id,
+            email: authUser.email,
+            full_name: 'Administrator',
+            role: 'admin'
+          })
+        } else {
+          role = 'intern'
+          const { data: existing } = await supabase
+            .from('users')
             .select('id')
-            .eq('email', authUser.email)
+            .eq('id', authUser.id)
             .single()
           
-          if (internData) {
-            role = 'intern'
+          if (!existing) {
             await supabase.from('users').insert({
               id: authUser.id,
               email: authUser.email,
@@ -86,7 +88,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           id: authUser.id,
           email: authUser.email!,
           full_name: userData?.full_name || authUser.user_metadata?.full_name || authUser.email!.split('@')[0],
-          role: role as 'admin' | 'intern' | 'viewer'
+          role: role
         })
       }
     } catch (error) {
@@ -99,21 +101,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const isAdmin = user?.role === 'admin'
   const isIntern = user?.role === 'intern'
   const isViewer = user?.role === 'viewer'
-  const canEdit = isAdmin
-  const canDelete = isAdmin
-  const canViewAll = isAdmin || isViewer
 
   return (
-    <AuthContext.Provider value={{
-      user,
-      loading,
-      isAdmin,
-      isIntern,
-      isViewer,
-      canEdit,
-      canDelete,
-      canViewAll,
-    }}>
+    <AuthContext.Provider value={{ user, loading, isAdmin, isIntern, isViewer }}>
       {children}
     </AuthContext.Provider>
   )
